@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "./Landing.css";  
 import "./Landing.css";  
 
 /*
@@ -8,6 +9,24 @@ import "./Landing.css";
 
 export default function Landing() {
   const navigate = useNavigate();
+  const [searchInput, setSearchInput] = useState("");
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchInput.trim()) {
+      navigate(`/Show?q=${encodeURIComponent(searchInput.trim())}`);
+    } else {
+      navigate('/Show');
+    }
+  };
+
+  const scrollToSection = (e, id) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   const features = [
     {
@@ -67,31 +86,31 @@ export default function Landing() {
   return (
     <div className="app">
       <header className="nav">
-        <div className="container nav-inner">
-          <div className="brand">
-             <img src= "/logo.png" />
-             <span className="brand-text"></span>
+        <div className="nav-inner">
+          <div className="nav-left">
+            <img src="/logo.png" alt="PackNgo" className="logo" />
           </div>
-
-          <nav className="nav-links">
-            <a href="#features">Features</a>
-            <a href="#destinations">Destinations</a>
-            <a href="#testimonials">Testimonials</a>
-          </nav>
-
-          <div className="nav-actions">
-            <input className="search" placeholder="Search destinations..." />
-            <button
-              className="btn outline"
-              onClick={() => navigate("/signup")}
-            >
-              Sign in
-            </button>
+          <div className="nav-center">
+            <a href="#destinations" onClick={(e) => scrollToSection(e, 'destinations')}>Destinations</a>
+            <a href="#features" onClick={(e) => scrollToSection(e, 'features')}>Features</a>
+            <a href="#testimonials" onClick={(e) => scrollToSection(e, 'testimonials')}>Testimonials</a>
+          </div>
+          <div className="nav-right">
+            <form onSubmit={handleSearch}>
+              <input 
+                type="text" 
+                placeholder="Search destinations..." 
+                className="search" 
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </form>
+            <button className="btn primary" onClick={() => navigate('/Login')}>Log In</button>
           </div>
         </div>
       </header>
 
-      <main>
+      <main className="landing-main">
         <section className="hero">
           <div className="hero-bg" />
           <div className="hero-content container">
@@ -100,14 +119,17 @@ export default function Landing() {
               Connect with like-minded solo travelers and explore the world together safely.
             </p>
             <div className="hero-ctas">
-              <button className="btn primary">Find Your Solo Match</button>
-              <button className="btn ghost">Explore Features</button>
+              <button className="btn primary" onClick={() => navigate('/Login')}>Find Your Solo Match</button>
+              <button className="btn ghost" onClick={(e) => scrollToSection(e, 'features')}>Explore Features</button>
             </div>
           </div>
         </section>
 
         <section id="features" className="container section features">
-          <h2 className="section-title">How PackNgo Works</h2>
+          <div className="section-header-cnt">
+            <h2 className="section-title">How PackNgo Works</h2>
+            <p className="section-subtitle">Everything you need for an unforgettable solo journey.</p>
+          </div>
           <div className="grid features-grid">
             {features.map((f, i) => (
               <div key={i} className="card feature-card">
@@ -120,7 +142,10 @@ export default function Landing() {
         </section>
 
         <section id="destinations" className="container section">
-          <h2 className="section-title">Featured Destinations</h2>
+          <div className="section-header-cnt">
+            <h2 className="section-title">Featured Destinations</h2>
+            <p className="section-subtitle">Discover where our community is exploring right now.</p>
+          </div>
           <div className="grid dest-grid">
             {destinations.map((d, i) => (
               <article key={i} className="dest-card">
@@ -135,7 +160,10 @@ export default function Landing() {
         </section>
 
         <section id="testimonials" className="container section">
-          <h2 className="section-title">Traveler Spotlights</h2>
+          <div className="section-header-cnt">
+            <h2 className="section-title">Traveler Spotlights</h2>
+            <p className="section-subtitle">Hear from our vibrant community of solo explorers.</p>
+          </div>
           <div className="grid traveler-grid">
             {travelers.map((t, i) => (
               <div key={i} className="card traveler-card">

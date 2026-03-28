@@ -3,26 +3,27 @@ import { Link, useNavigate } from "react-router-dom";
 import { useGoogleLogin } from '@react-oauth/google';
 import FacebookLoginRaw from 'react-facebook-login/dist/facebook-login-render-props';
 const FacebookLogin = FacebookLoginRaw.default || FacebookLoginRaw;
-import "./Signup.css";
+import "./Signup.css"; // Reuse Signup.css for shared styles
 
-export default function Signup() {
+export default function Login() {
   const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Simulate login logic, then redirect
     navigate("/Homepage");
   };
 
   const loginWithGoogle = useGoogleLogin({
     onSuccess: (codeResponse) => {
-      console.log('Google signup successful:', codeResponse);
+      console.log('Google login successful:', codeResponse);
       navigate("/Homepage");
     },
-    onError: (error) => console.log('Google Signup Failed:', error)
+    onError: (error) => console.log('Google Login Failed:', error)
   });
 
   const responseFacebook = (response) => {
-    console.log('Facebook signup response:', response);
+    console.log('Facebook login response:', response);
     if(response.accessToken) {
       navigate("/Homepage");
     }
@@ -35,20 +36,15 @@ export default function Signup() {
           <img src="/logo.png" alt="PackNgo" />
         </div>
         <div className="top-right">
-          Already have an account? <Link to="/Login">Log In</Link>
+          Don't have an account? <Link to="/Signup">Sign Up</Link>
         </div>
 
 
         <div className="card">
           <div className="card-left">
-            <h1 className="title">Create an account</h1>
+            <h1 className="title">Welcome Back</h1>
 
             <form onSubmit={handleSubmit}>
-              <div className="input-wrap">
-                <label>Full Name</label>
-                <input type="text" required />
-              </div>
-
               <div className="input-wrap">
                 <label>Email</label>
                 <input type="email" placeholder="example.email@gmail.com" required />
@@ -57,19 +53,13 @@ export default function Signup() {
               <div className="input-wrap">
                 <div className="password-row">
                   <label>Password</label>
-                  <span className="small-muted">Enter at least 8+ characters</span>
                 </div>
                 <input type="password" required />
               </div>
 
-              <div className="input-wrap">
-                <label>Confirm Password</label>
-                <input type="password" required />
-              </div>
+              <button className="btn-primary" type="submit">Log in</button>
 
-              <button className="btn-primary" type="submit">Sign Up</button>
-
-              <div className="or">Or sign up with</div>
+              <div className="or">Or log in with</div>
 
               <div className="socials">
                 <button type="button" className="social" onClick={() => loginWithGoogle()}>G</button>
@@ -83,8 +73,6 @@ export default function Signup() {
                 />
                 <button type="button" className="social" onClick={() => navigate("/Homepage")}></button>
               </div>
-
-              <div className="legal">By signing up you agree to our Terms & Services.</div>
             </form>
           </div>
 

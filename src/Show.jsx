@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import "./Show.css";
+import Navbar from "./Navbar";
 
 function Show() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
   // State for destinations data
   const [popularDestinations, setPopularDestinations] = useState([]);
   const [tailoredDestinations, setTailoredDestinations] = useState([]);
   const [discoverMore, setDiscoverMore] = useState([]);
   
   // State for filters
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [selectedBudget, setSelectedBudget] = useState("All Budgets");
   const [selectedRegion, setSelectedRegion] = useState("All Regions");
   const [selectedTripType, setSelectedTripType] = useState("All Types");
@@ -29,206 +34,58 @@ function Show() {
   const regionOptions = ["All Regions", "Europe", "Asia", "Americas", "Africa", "Oceania"];
   const tripTypeOptions = ["All Types", "City Escape", "Adventure", "Cultural", "Beach", "Nature"];
 
-  // Fetch data on mount
   useEffect(() => {
+    window.scrollTo(0, 0);
     fetchDestinations();
-    
-    // Set up real-time updates every 45 seconds
-    const interval = setInterval(() => {
-      fetchDestinations();
-    }, 45000);
-
-    return () => clearInterval(interval);
   }, []);
 
-  // Fetch destinations (simulated API call)
   const fetchDestinations = async () => {
     try {
-      // In real app: const response = await fetch('YOUR_API_URL/destinations');
-      
-      // Simulated data with dynamic reviews
       const popular = [
         {
-          id: 1,
-          city: "Paris, France",
-          tag: "City Escape",
-          reviews: Math.floor(2120 + Math.random() * 50),
-          rating: 4.8,
-          days: "4–7 Days",
-          budget: "Mid Range",
-          region: "Europe",
-         img: "/src/assets/Paris.jpg",
+          id: 1, city: "Paris, France", tag: "City Escape", reviews: 2154,
+          rating: 4.8, days: "4–7 Days", budget: "Mid Range", region: "Europe",
+          img: "/src/assets/Paris.jpg"
         },
         {
-          id: 2,
-          city: "Kyoto, Japan",
-          tag: "Cultural",
-          reviews: Math.floor(870 + Math.random() * 30),
-          rating: 4.9,
-          days: "5–10 Days",
-          budget: "Mid Range",
-          region: "Asia",
-          img: "/src/assets/kyoto.jpg",
+          id: 2, city: "Kyoto, Japan", tag: "Cultural", reviews: 890,
+          rating: 4.9, days: "5–10 Days", budget: "Mid Range", region: "Asia",
+          img: "/src/assets/kyoto.jpg"
         },
         {
-          id: 3,
-          city: "Machu Picchu, Peru",
-          tag: "Adventure",
-          reviews: Math.floor(1340 + Math.random() * 40),
-          rating: 4.9,
-          days: "3–5 Days",
-          budget: "Budget Friendly",
-          region: "Americas",
-          img: "/src/assets/peru.webp",
+          id: 3, city: "Machu Picchu, Peru", tag: "Adventure", reviews: 1380,
+          rating: 4.9, days: "3–5 Days", budget: "Budget Friendly", region: "Americas",
+          img: "/src/assets/peru.webp"
         },
         {
-          id: 4,
-          city: "Reykjavik, Iceland",
-          tag: "Nature",
-          reviews: Math.floor(650 + Math.random() * 20),
-          rating: 4.7,
-          days: "4–6 Days",
-          budget: "Luxury",
-          region: "Europe",
-          img: "/src/assets/Reykjavik.jpg",
+           id: 4, city: "Reykjavik, Iceland", tag: "Nature", reviews: 654,
+           rating: 4.7, days: "4–6 Days", budget: "Luxury", region: "Europe",
+           img: "/src/assets/Reykjavik.jpg"
         },
         {
-          id: 5,
-          city: "Cape Town, South Africa",
-          tag: "Beach",
-          reviews: Math.floor(910 + Math.random() * 25),
-          rating: 4.8,
-          days: "5–8 Days",
-          budget: "Mid Range",
-          region: "Africa",
-          img: "/src/assets/capetown.jpg",
+           id: 5, city: "Cape Town, South Africa", tag: "Beach", reviews: 935,
+           rating: 4.8, days: "5–8 Days", budget: "Mid Range", region: "Africa",
+           img: "/src/assets/capetown.jpg"
         },
         {
-          id: 6,
-          city: "Rome, Italy",
-          tag: "Cultural",
-          reviews: Math.floor(1780 + Math.random() * 60),
-          rating: 4.8,
-          days: "4–7 Days",
-          budget: "Mid Range",
-          region: "Europe",
-          img: "/src/assets/rome.jpg",
-        },
-        {
-          id: 7,
-          city: "Zermatt, Switzerland",
-          tag: "Nature",
-          reviews: Math.floor(420 + Math.random() * 15),
-          rating: 4.7,
-          days: "3–5 Days",
-          budget: "Luxury",
-          region: "Europe",
-          img: "/src/assets/zermatt.webp",
-        },
-        {
-          id: 8,
-          city: "Patagonia, Chile",
-          tag: "Adventure",
-          reviews: Math.floor(380 + Math.random() * 12),
-          rating: 4.9,
-          days: "7–14 Days",
-          budget: "Mid Range",
-          region: "Americas",
-          img: "/src/assets/patagonia.jpg",
-        },
-        {
-          id: 9,
-          city: "Dubai, UAE",
-          tag: "City Escape",
-          reviews: Math.floor(1010 + Math.random() * 35),
-          rating: 4.6,
-          days: "3–5 Days",
-          budget: "Luxury",
-          region: "Asia",
-          img: "/src/assets/dubai.webp",
-        },
+           id: 6, city: "Rome, Italy", tag: "Cultural", reviews: 1840,
+           rating: 4.8, days: "4–7 Days", budget: "Mid Range", region: "Europe",
+           img: "/src/assets/rome.jpg"
+        }
       ];
 
       const tailored = [
-        {
-          id: 101,
-          city: "Bali, Indonesia",
-          tag: "Super Friendly",
-          budget: "Budget Friendly",
-          region: "Asia",
-          img: "/src/assets/bali.jpg",
-        },
-        {
-          id: 102,
-          city: "Queenstown, NZ",
-          tag: "Very Safe",
-          budget: "Mid Range",
-          region: "Oceania",
-          img: "/src/assets/queenstown.jpg",
-        },
-        {
-          id: 103,
-          city: "Amalfi Coast, Italy",
-          tag: "Luxury",
-          budget: "Luxury",
-          region: "Europe",
-          img: "/src/assets/amalfi.webp",
-        },
-        {
-          id: 104,
-          city: "Santorini, Greece",
-          tag: "Romantic",
-          budget: "Luxury",
-          region: "Europe",
-          img: "/src/assets/Paris.jpg",
-        },
-        {
-          id: 105,
-          city: "Chiang Mai, Thailand",
-          tag: "Budget Friendly",
-          budget: "Budget Friendly",
-          region: "Asia",
-          img: "/src/assets/bankok.webp",
-        },
+        { id: 101, city: "Bali, Indonesia", tag: "Super Friendly", img: "/src/assets/bali.jpg" },
+        { id: 102, city: "Queenstown, NZ", tag: "Very Safe", img: "/src/assets/queenstown.jpg" },
+        { id: 103, city: "Amalfi Coast, Italy", tag: "Luxury", img: "/src/assets/amalfi.webp" },
+        { id: 104, city: "Santorini, Greece", tag: "Romantic", img: "/src/assets/Paris.jpg" },
       ];
 
       const discover = [
-        {
-          id: 201,
-          city: "Lisbon, Portugal",
-          tag: "Budget Friendly",
-          days: "4–7 Days",
-          budget: "Budget Friendly",
-          region: "Europe",
-          img: "/src/assets/lisbon.avif",
-        },
-        {
-          id: 202,
-          city: "Vancouver, Canada",
-          tag: "Mix of Range",
-          days: "5–8 Days",
-          budget: "Mid Range",
-          region: "Americas",
-          img: "/src/assets/vancouver.webp",
-        },
-        {
-          id: 203,
-          city: "Bangkok, Thailand",
-          tag: "Super Friendly",
-          days: "3–6 Days",
-          budget: "Budget Friendly",
-          region: "Asia",
-          img: "/src/assets/bankok.webp",
-        },
-        {
-          id: 204,
-          city: "Sydney, Australia",
-          tag: "Mid Range",
-          days: "5–10 Days",
-          budget: "Mid Range",
-          region: "Oceania",
-          img: "/src/assets/sydney.webp",
-        },
+        { id: 201, city: "Lisbon, Portugal", tag: "Backpacker Favorite", img: "/src/assets/lisbon.avif" },
+        { id: 202, city: "Vancouver, Canada", tag: "Mountain Vibes", img: "/src/assets/vancouver.webp" },
+        { id: 203, city: "Bangkok, Thailand", tag: "Foodie Paradise", img: "/src/assets/bankok.webp" },
+        { id: 204, city: "Sydney, Australia", tag: "Beach Life", img: "/src/assets/sydney.webp" },
       ];
 
       setPopularDestinations(popular);
@@ -236,54 +93,21 @@ function Show() {
       setDiscoverMore(discover);
       setIsLoading(false);
     } catch (error) {
-      console.error("Error fetching destinations:", error);
+      console.error(error);
       setIsLoading(false);
     }
   };
 
-  // Filter destinations based on search and filters
   const getFilteredDestinations = (destinations) => {
     return destinations.filter(dest => {
-      const matchesSearch = dest.city.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesBudget = selectedBudget === "All Budgets" || dest.budget === selectedBudget;
-      const matchesRegion = selectedRegion === "All Regions" || dest.region === selectedRegion;
-      const matchesTripType = selectedTripType === "All Types" || dest.tag === selectedTripType;
-      
-      return matchesSearch && matchesBudget && matchesRegion && matchesTripType;
+      const matchQ = dest.city.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchB = selectedBudget === "All Budgets" || dest.budget === selectedBudget;
+      const matchR = selectedRegion === "All Regions" || dest.region === selectedRegion;
+      const matchT = selectedTripType === "All Types" || dest.tag === selectedTripType;
+      return matchQ && matchB && matchR && matchT;
     });
   };
 
-  // Carousel navigation
-  const handlePrevTailored = () => {
-    setTailoredIndex(prev => Math.max(0, prev - 1));
-  };
-
-  const handleNextTailored = () => {
-    setTailoredIndex(prev => Math.min(tailoredDestinations.length - 3, prev + 1));
-  };
-
-  // Get visible tailored destinations
-  const getVisibleTailored = () => {
-    return tailoredDestinations.slice(tailoredIndex, tailoredIndex + 3);
-  };
-
-  // Handle filter selection
-  const handleBudgetSelect = (budget) => {
-    setSelectedBudget(budget);
-    setShowBudgetDropdown(false);
-  };
-
-  const handleRegionSelect = (region) => {
-    setSelectedRegion(region);
-    setShowRegionDropdown(false);
-  };
-
-  const handleTripTypeSelect = (type) => {
-    setSelectedTripType(type);
-    setShowTripTypeDropdown(false);
-  };
-
-  // Reset all filters
   const resetFilters = () => {
     setSearchQuery("");
     setSelectedBudget("All Budgets");
@@ -292,317 +116,181 @@ function Show() {
   };
 
   const filteredPopular = getFilteredDestinations(popularDestinations);
-  const filteredDiscover = getFilteredDestinations(discoverMore);
 
   if (isLoading) {
     return (
-      <div className="app-root">
-        <header className="navbar">
-          <div className="nav-left">
-            <span className="logo-text">Pac<span className="logo-highlight">KN</span>Go</span>
-          </div>
-        </header>
-        <div className="loading-state">
-          <div className="loading-spinner"></div>
-          <p>Loading destinations...</p>
-        </div>
+      <div className="exp-app">
+        <div className="exp-loading"><div className="exp-spinner"></div></div>
       </div>
     );
   }
 
   return (
-    <div className="app-root">
-      {/* NAVBAR */}
-      <header className="navbar">
-        <div className="nav-left">
-          <span className="logo-text">Pac<span className="logo-highlight">KN</span>Go</span>
-        </div>
-        <nav className="nav-links">
-          <a href="#hero">Home</a>
-          <a href="#popular">Explore</a>
-          <a href="#trips">Trips</a>
-          <a href="#community">Community</a>
-          <a href="#profile">Profile</a>
-        </nav>
-        <div className="nav-right">
-          <div className="nav-avatar">A</div>
-        </div>
-      </header>
+    <div className="exp-app">
+      {/* GLOBAL NAVBAR */}
+      <Navbar activePage="Explore" />
 
-      <main className="main-area">
-        {/* HERO */}
-        <section className="hero-section" id="hero">
-          <div className="container">
-            <div className="hero-card">
-              <div className="hero-left">
-                <h1>Where will your next solo adventure take you?</h1>
-                <p className="hero-text">
-                  Explore hand-picked destinations perfect for independent
-                  travelers. From vibrant cities to serene natural escapes,
-                  find your next journey.
-                </p>
-
-                <div className="hero-search">
-                  <input
-                    type="text"
-                    placeholder="Search destinations, countries or experiences..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  <button className="btn-primary">Search</button>
-                </div>
-
-                <div className="hero-filters">
-                  {/* Budget Dropdown */}
-                  <div className="dropdown-wrapper">
-                    <button 
-                      className="pill-btn"
-                      onClick={() => {
-                        setShowBudgetDropdown(!showBudgetDropdown);
-                        setShowRegionDropdown(false);
-                        setShowTripTypeDropdown(false);
-                      }}
-                    >
-                      {selectedBudget} ▾
-                    </button>
-                    {showBudgetDropdown && (
-                      <div className="dropdown-menu">
-                        {budgetOptions.map(option => (
-                          <div
-                            key={option}
-                            className={`dropdown-item ${selectedBudget === option ? 'active' : ''}`}
-                            onClick={() => handleBudgetSelect(option)}
-                          >
-                            {option}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Region Dropdown */}
-                  <div className="dropdown-wrapper">
-                    <button 
-                      className="pill-btn"
-                      onClick={() => {
-                        setShowRegionDropdown(!showRegionDropdown);
-                        setShowBudgetDropdown(false);
-                        setShowTripTypeDropdown(false);
-                      }}
-                    >
-                      {selectedRegion} ▾
-                    </button>
-                    {showRegionDropdown && (
-                      <div className="dropdown-menu">
-                        {regionOptions.map(option => (
-                          <div
-                            key={option}
-                            className={`dropdown-item ${selectedRegion === option ? 'active' : ''}`}
-                            onClick={() => handleRegionSelect(option)}
-                          >
-                            {option}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Trip Type Dropdown */}
-                  <div className="dropdown-wrapper">
-                    <button 
-                      className="pill-btn"
-                      onClick={() => {
-                        setShowTripTypeDropdown(!showTripTypeDropdown);
-                        setShowBudgetDropdown(false);
-                        setShowRegionDropdown(false);
-                      }}
-                    >
-                      {selectedTripType} ▾
-                    </button>
-                    {showTripTypeDropdown && (
-                      <div className="dropdown-menu">
-                        {tripTypeOptions.map(option => (
-                          <div
-                            key={option}
-                            className={`dropdown-item ${selectedTripType === option ? 'active' : ''}`}
-                            onClick={() => handleTripTypeSelect(option)}
-                          >
-                            {option}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Reset Filters Button */}
-                  {(selectedBudget !== "All Budgets" || selectedRegion !== "All Regions" || selectedTripType !== "All Types" || searchQuery) && (
-                    <button className="pill-btn reset-btn" onClick={resetFilters}>
-                      ✕ Clear Filters
-                    </button>
+      {/* FULL-BLEED HERO */}
+      <section className="exp-hero">
+        <div className="exp-hero-bg"></div>
+        <div className="exp-hero-gradient"></div>
+        
+        <div className="exp-hero-content">
+          <h1>Where will your next solo adventure take you?</h1>
+          <p>
+            Explore hand-picked destinations perfect for independent travelers. 
+            From vibrant cities to serene natural escapes, find your true north.
+          </p>
+          
+          <div className="exp-search-bar">
+            <span className="exp-search-icon">🔍</span>
+            <input 
+              type="text" 
+              placeholder="Search cities, countries, or regions..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className="exp-filter-bar-wrapper">
+            <div className="exp-filter-bar">
+              <div className="exp-filter-group">
+                <div className="exp-dropdown">
+                  <button onClick={() => {setShowBudgetDropdown(!showBudgetDropdown); setShowRegionDropdown(false); setShowTripTypeDropdown(false);}}>
+                    {selectedBudget} <span className="caret">▾</span>
+                  </button>
+                  {showBudgetDropdown && (
+                    <div className="exp-dropdown-menu">
+                      {budgetOptions.map(opt => <div key={opt} onClick={() => {setSelectedBudget(opt); setShowBudgetDropdown(false)}}>{opt}</div>)}
+                    </div>
                   )}
                 </div>
 
-                {/* Active Filters Display */}
-                {(selectedBudget !== "All Budgets" || selectedRegion !== "All Regions" || selectedTripType !== "All Types") && (
-                  <div className="active-filters">
-                    <span className="filter-label">Active filters:</span>
-                    {selectedBudget !== "All Budgets" && (
-                      <span className="filter-tag">{selectedBudget}</span>
-                    )}
-                    {selectedRegion !== "All Regions" && (
-                      <span className="filter-tag">{selectedRegion}</span>
-                    )}
-                    {selectedTripType !== "All Types" && (
-                      <span className="filter-tag">{selectedTripType}</span>
-                    )}
-                  </div>
+                <div className="exp-dropdown">
+                  <button onClick={() => {setShowRegionDropdown(!showRegionDropdown); setShowBudgetDropdown(false); setShowTripTypeDropdown(false);}}>
+                    {selectedRegion} <span className="caret">▾</span>
+                  </button>
+                  {showRegionDropdown && (
+                    <div className="exp-dropdown-menu">
+                      {regionOptions.map(opt => <div key={opt} onClick={() => {setSelectedRegion(opt); setShowRegionDropdown(false)}}>{opt}</div>)}
+                    </div>
+                  )}
+                </div>
+
+                <div className="exp-dropdown">
+                  <button onClick={() => {setShowTripTypeDropdown(!showTripTypeDropdown); setShowBudgetDropdown(false); setShowRegionDropdown(false);}}>
+                    {selectedTripType} <span className="caret">▾</span>
+                  </button>
+                  {showTripTypeDropdown && (
+                    <div className="exp-dropdown-menu">
+                      {tripTypeOptions.map(opt => <div key={opt} onClick={() => {setSelectedTripType(opt); setShowTripTypeDropdown(false)}}>{opt}</div>)}
+                    </div>
+                  )}
+                </div>
+                
+                {(selectedBudget !== "All Budgets" || selectedRegion !== "All Regions" || selectedTripType !== "All Types" || searchQuery) && (
+                   <button className="exp-btn-clear" onClick={resetFilters}>✕ Clear Filters</button>
                 )}
               </div>
-
-              <div className="hero-right">
-                <img
-                  src="traveller.jpg"
-                  alt="Solo traveler"
-                />
-              </div>
             </div>
           </div>
-        </section>
 
-        {/* POPULAR DESTINATIONS */}
-        <section className="section" id="popular">
-          <div className="container">
-            <div className="section-header">
-              <h2 className="section-title">Popular Solo Destinations</h2>
-              <span className="results-count">{filteredPopular.length} destinations found</span>
-            </div>
-            
-            {filteredPopular.length === 0 ? (
-              <div className="no-results">
-                <div className="no-results-icon">🔍</div>
-                <h3>No destinations found</h3>
-                <p>Try adjusting your filters or search query</p>
-                <button className="btn-primary" onClick={resetFilters}>
-                  Clear All Filters
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-3">
-                {filteredPopular.map((d) => (
-                  <div key={d.id} className="card destination-card">
-                    <img src={d.img} alt={d.city} className="card-image" />
-                    <div className="card-body">
-                      <h3>{d.city}</h3>
-                      <div className="meta-row">
-                        <span>🧭 {d.days}</span>
-                        <span className="divider">•</span>
-                        <span>👤 Solo Friendly</span>
-                      </div>
-                      <div className="meta-row small">
-                        <span>⭐ {d.rating} ({d.reviews.toLocaleString()} Reviews)</span>
-                      </div>
-                      <div className="card-footer">
-                        <span className="tag-pill">{d.tag}</span>
-                        <button className="btn-outline">View Details</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        </div>
+      </section>
+
+      <main className="exp-main container">
+        
+        {/* POPULAR DESTINATIONS GRID */}
+        <section className="exp-section">
+          <div className="exp-section-header">
+            <h2>Popular Solo Destinations</h2>
+            <span className="exp-count">{filteredPopular.length} results found</span>
           </div>
-        </section>
 
-        {/* TAILORED JUST FOR YOU */}
-        <section className="section" id="trips">
-          <div className="container">
-            <div className="title-row">
-              <h2 className="section-title">Tailored Just For You</h2>
-              <div className="carousel-arrows">
-                <button 
-                  onClick={handlePrevTailored}
-                  disabled={tailoredIndex === 0}
-                  className="carousel-btn"
-                >
-                  {"<"}
-                </button>
-                <button 
-                  onClick={handleNextTailored}
-                  disabled={tailoredIndex >= tailoredDestinations.length - 3}
-                  className="carousel-btn"
-                >
-                  {">"}
-                </button>
-              </div>
+          {filteredPopular.length === 0 ? (
+            <div className="exp-empty">
+              <h3>No destinations matched your criteria.</h3>
+              <p>Try clearing some filters or searching broader locations.</p>
+              <button onClick={resetFilters}>Clear All Filters</button>
             </div>
-
-            <div className="grid grid-3">
-              {getVisibleTailored().map((d) => (
-                <div key={d.id} className="card destination-card">
-                  <img src={d.img} alt={d.city} className="card-image" />
-                  <div className="card-body">
-                    <h3>{d.city}</h3>
-                    <div className="meta-row small">
-                      <span>👤 {d.tag}</span>
+          ) : (
+            <div className="exp-grid">
+              {filteredPopular.map(dest => (
+                <article key={dest.id} className="exp-card">
+                  <div className="exp-card-img">
+                    <img src={dest.img || "/traveler.jpg"} alt={dest.city} />
+                    <div className="exp-card-badge">{dest.tag}</div>
+                  </div>
+                  <div className="exp-card-body">
+                    <h3>{dest.city}</h3>
+                    <div className="exp-meta">
+                      <span>🧭 {dest.days}</span>
+                      <span>⭐ {dest.rating} ({dest.reviews.toLocaleString()})</span>
                     </div>
-                    <div className="card-footer">
-                      <button className="btn-primary full-width">
-                        Explore Now
-                      </button>
+                    <div className="exp-card-footer">
+                      <span className="exp-budget-pill">{dest.budget}</span>
+                      <button onClick={() => navigate('/Destinationdetail')}>Discover</button>
                     </div>
                   </div>
-                </div>
+                </article>
               ))}
             </div>
+          )}
+        </section>
+
+        {/* TAILORED CAROUSEL */}
+        <section className="exp-section">
+          <div className="exp-section-header">
+            <h2>Perfect For Your Style</h2>
+          </div>
+          <div className="exp-horizontal-scroll">
+            {tailoredDestinations.map(dest => (
+              <article key={dest.id} className="exp-card exp-card-slim">
+                 <div className="exp-card-img">
+                    <img src={dest.img} alt={dest.city} />
+                 </div>
+                 <div className="exp-card-overlay">
+                    <h3>{dest.city}</h3>
+                    <span>{dest.tag}</span>
+                 </div>
+                 <div className="exp-card-action">
+                    <button onClick={() => navigate('/Destinationdetail')}>Explore</button>
+                 </div>
+              </article>
+            ))}
           </div>
         </section>
 
-        {/* DISCOVER MORE */}
-        <section className="section" id="community">
-          <div className="container">
-            <h2 className="section-title">Discover More For You</h2>
-            
-            {filteredDiscover.length === 0 ? (
-              <div className="no-results">
-                <p>No matching destinations in this section</p>
-              </div>
-            ) : (
-              <div className="grid grid-2">
-                {filteredDiscover.map((d) => (
-                  <div key={d.id} className="card wide-card">
-                    <div className="wide-image-wrap">
-                      <img src={d.img} alt={d.city} />
-                    </div>
-                    <div className="wide-body">
-                      <h3>{d.city}</h3>
-                      <div className="meta-row">
-                        <span>🧭 {d.days}</span>
-                        <span className="divider">•</span>
-                        <span>👤 Solo</span>
-                      </div>
-                      <div className="meta-row small">
-                        <span className="tag-pill">{d.tag}</span>
-                      </div>
-                      <div className="wide-footer">
-                        <button className="btn-primary">Discover</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* MORE DISCOVERIES */}
+        <section className="exp-section">
+          <div className="exp-section-header">
+            <h2>Hidden Gems & Getaways</h2>
+          </div>
+          <div className="exp-grid exp-grid-wide">
+            {discoverMore.map(dest => (
+              <article key={dest.id} className="exp-card exp-card-horizontal">
+                <div className="exp-card-img">
+                  <img src={dest.img} alt={dest.city} />
+                </div>
+                <div className="exp-card-body">
+                  <h3>{dest.city}</h3>
+                  <span className="exp-highlight-pill">{dest.tag}</span>
+                  <button className="exp-card-link" onClick={() => navigate('/Destinationdetail')}>View Itinerary →</button>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
+
       </main>
 
       {/* FOOTER */}
-      <footer className="footer" id="profile">
-        <div className="container footer-inner">
-          <span>© 2025 PacKNGo. All rights reserved.</span>
-          <div className="footer-links">
-            <a href="#!">Privacy Policy</a>
-            <a href="#!">Terms of Service</a>
-            <a href="#!">Contact Us</a>
+      <footer className="exp-footer">
+        <div className="container">
+          <div className="exp-footer-logo">PackNgo Explore</div>
+          <div className="exp-footer-links">
+             <span>© 2026 PackNgo. All Rights Reserved.</span>
+             <a href="#!">Privacy Policy</a>
+             <a href="#!">Terms of Service</a>
           </div>
         </div>
       </footer>

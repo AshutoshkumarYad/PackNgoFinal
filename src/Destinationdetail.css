@@ -25,78 +25,7 @@ body,
   background: radial-gradient(circle at top, #262739 0%, #050508 45%);
 }
 
-/* ================= NAVBAR (MATCH HOME) ================= */
 
-.navbar {
-  position: fixed;
-  top: 0;
-  inset-inline: 0;
-  height: 70px;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 80px;
-
-  padding-inline: 72px;
-  z-index: 1000;
-
-  backdrop-filter: blur(18px);
-  background: linear-gradient(
-    to bottom,
-    rgba(5, 5, 10, 0.94),
-    rgba(5, 5, 10, 0.7),
-    transparent
-  );
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.logo {
-  font-weight: 700;
-  font-size: 20px;
-  letter-spacing: 0.08em;
-}
-
-.nav-links {
-  display: flex;
-  gap: 32px;
-}
-
-.nav-link {
-  color: #a0a0b8;
-  font-size: 14px;
-  text-decoration: none;
-  position: relative;
-  padding-block: 4px;
-}
-
-.nav-link:hover {
-  color: #ffffff;
-}
-
-.nav-link::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -6px;
-  width: 0;
-  height: 2px;
-  background: #2e7bff;
-  border-radius: 999px;
-  transition: width 0.25s ease;
-}
-
-.nav-link:hover::after {
-  width: 14px;
-}
-
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 20% 0, #ffffffaa, #2e7bff);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
-}
 
 /* ================= HERO (MATCH HOME CARD STYLE) ================= */
 
@@ -125,11 +54,9 @@ body,
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-      to bottom,
+  background: linear-gradient(to bottom,
       rgba(0, 0, 0, 0.3),
-      rgba(0, 0, 0, 0.85)
-    ),
+      rgba(0, 0, 0, 0.85)),
     radial-gradient(circle at top, rgba(46, 123, 255, 0.4), transparent 55%);
 }
 
@@ -208,10 +135,6 @@ body,
 /* ================= RESPONSIVE ================= */
 
 @media (max-width: 768px) {
-  .navbar {
-    gap: 24px;
-    padding-inline: 20px;
-  }
 
   .hero-section {
     height: 360px;
