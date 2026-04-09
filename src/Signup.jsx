@@ -1,30 +1,31 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useGoogleLogin } from '@react-oauth/google';
-import FacebookLoginRaw from 'react-facebook-login/dist/facebook-login-render-props';
-const FacebookLogin = FacebookLoginRaw.default || FacebookLoginRaw;
+import axios from 'axios';
 import "./Signup.css";
 
 export default function Signup() {
   const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate("/Homepage");
-  };
+    setError("");
 
-  const loginWithGoogle = useGoogleLogin({
-    onSuccess: (codeResponse) => {
-      console.log('Google signup successful:', codeResponse);
-      navigate("/Homepage");
-    },
-    onError: (error) => console.log('Google Signup Failed:', error)
-  });
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
 
-  const responseFacebook = (response) => {
-    console.log('Facebook signup response:', response);
-    if(response.accessToken) {
+    try {
+      const { data } = await axios.post("/api/auth/register", { name, email, password });
+      localStorage.setItem("packngo_user", JSON.stringify(data));
       navigate("/Homepage");
+    } catch (err) {
+      setError(err.response?.data?.message || "Error creating account. Try again.");
     }
   };
 
@@ -44,14 +45,15 @@ export default function Signup() {
             <h1 className="title">Create an account</h1>
 
             <form onSubmit={handleSubmit}>
+              {error && <div style={{ color: "red", fontSize: "14px", marginBottom: "14px" }}>{error}</div>}
               <div className="input-wrap">
                 <label>Full Name</label>
-                <input type="text" required />
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
               </div>
 
               <div className="input-wrap">
                 <label>Email</label>
-                <input type="email" placeholder="example.email@gmail.com" required />
+                <input type="email" placeholder="example.email@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
 
               <div className="input-wrap">
@@ -59,30 +61,15 @@ export default function Signup() {
                   <label>Password</label>
                   <span className="small-muted">Enter at least 8+ characters</span>
                 </div>
-                <input type="password" required />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
               </div>
 
               <div className="input-wrap">
                 <label>Confirm Password</label>
-                <input type="password" required />
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
               </div>
 
               <button className="btn-primary" type="submit">Sign Up</button>
-
-              <div className="or">Or sign up with</div>
-
-              <div className="socials">
-                <button type="button" className="social" onClick={() => loginWithGoogle()}>G</button>
-                <FacebookLogin
-                  appId={import.meta.env.VITE_FACEBOOK_APP_ID || "123456789"}
-                  autoLoad={false}
-                  callback={responseFacebook}
-                  render={renderProps => (
-                    <button type="button" className="social" onClick={renderProps.onClick}>f</button>
-                  )}
-                />
-                <button type="button" className="social" onClick={() => navigate("/Homepage")}></button>
-              </div>
 
               <div className="legal">By signing up you agree to our Terms & Services.</div>
             </form>

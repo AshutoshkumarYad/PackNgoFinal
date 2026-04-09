@@ -1,31 +1,23 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useGoogleLogin } from '@react-oauth/google';
-import FacebookLoginRaw from 'react-facebook-login/dist/facebook-login-render-props';
-const FacebookLogin = FacebookLoginRaw.default || FacebookLoginRaw;
+import axios from 'axios';
 import "./Signup.css"; // Reuse Signup.css for shared styles
 
 export default function Login() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulate login logic, then redirect
-    navigate("/Homepage");
-  };
-
-  const loginWithGoogle = useGoogleLogin({
-    onSuccess: (codeResponse) => {
-      console.log('Google login successful:', codeResponse);
+    setError("");
+    try {
+      const { data } = await axios.post("/api/auth/login", { email, password });
+      localStorage.setItem("packngo_user", JSON.stringify(data));
       navigate("/Homepage");
-    },
-    onError: (error) => console.log('Google Login Failed:', error)
-  });
-
-  const responseFacebook = (response) => {
-    console.log('Facebook login response:', response);
-    if(response.accessToken) {
-      navigate("/Homepage");
+    } catch (err) {
+      setError(err.response?.data?.message || "Invalid email or password");
     }
   };
 
@@ -45,34 +37,20 @@ export default function Login() {
             <h1 className="title">Welcome Back</h1>
 
             <form onSubmit={handleSubmit}>
+              {error && <div style={{ color: "red", fontSize: "14px", marginBottom: "14px" }}>{error}</div>}
               <div className="input-wrap">
                 <label>Email</label>
-                <input type="email" placeholder="example.email@gmail.com" required />
+                <input type="email" placeholder="example.email@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
 
               <div className="input-wrap">
                 <div className="password-row">
                   <label>Password</label>
                 </div>
-                <input type="password" required />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
               </div>
 
               <button className="btn-primary" type="submit">Log in</button>
-
-              <div className="or">Or log in with</div>
-
-              <div className="socials">
-                <button type="button" className="social" onClick={() => loginWithGoogle()}>G</button>
-                <FacebookLogin
-                  appId={import.meta.env.VITE_FACEBOOK_APP_ID || "123456789"}
-                  autoLoad={false}
-                  callback={responseFacebook}
-                  render={renderProps => (
-                    <button type="button" className="social" onClick={renderProps.onClick}>f</button>
-                  )}
-                />
-                <button type="button" className="social" onClick={() => navigate("/Homepage")}></button>
-              </div>
             </form>
           </div>
 

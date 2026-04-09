@@ -1,24 +1,8 @@
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { globalDestinations } from "./data/destinationsData";
 import "./Homepage.css";
 import Navbar from "./Navbar";
-
-import kyoto from "./assets/kyoto.jpg";
-import pantagonia from "./assets/pantagonia.jpg";
-import marrekesh from "./assets/marrekesh.jpg";
-import paris from "./assets/paris.webp";
-import aurora from "./assets/aurora.jpg";
-import bora from "./assets/bora.jpg";
-import traveler from "./assets/traveler.jpg";
-
-const popularDestinations = [
-  { title: "Ancient Temples of Kyoto", image: kyoto, days: "5-10 days", rating: "4.9" },
-  { title: "Patagonian Wilderness", image: pantagonia, days: "7-14 days", rating: "4.8" },
-  { title: "Marrakech Souks", image: marrekesh, days: "4-7 days", rating: "4.7" },
-  { title: "Romantic Paris", image: paris, days: "3-6 days", rating: "4.8" },
-  { title: "Aurora Icelandic Nights", image: aurora, days: "4-6 days", rating: "4.9" },
-  { title: "Tropical Bora Bora", image: bora, days: "5-8 days", rating: "4.9" }
-];
 
 const travelerStories = [
   { name: "Elena Rodriguez", role: "Solo Photographer", icon: "📸" },
@@ -29,8 +13,61 @@ const travelerStories = [
 const Homepage = () => {
   const navigate = useNavigate();
 
+  const [popularDestinations, setPopularDestinations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     window.scrollTo(0, 0);
+
+    const getRecommendations = async () => {
+      try {
+        const userStr = localStorage.getItem("packngo_user");
+        const token = userStr ? JSON.parse(userStr).token : null;
+        let userBadges = [];
+        
+        if (token) {
+           const res = await fetch("/api/profile/me", {
+              headers: { "Authorization": `Bearer ${token}` }
+           });
+           if (res.ok) {
+              const profile = await res.json();
+              userBadges = profile.badges || [];
+           }
+        }
+
+        // Native Scoring Matrix
+        // Analyzes precise travel habits via earned badges, matching them against local destination tags
+        const scored = globalDestinations.map(dest => {
+           let score = Math.random() * 2; // Baseline variance to ensure the list isn't completely static
+           
+           const badgeStr = userBadges.join(" ").toLowerCase();
+           if (dest.tag === "Nature" && (badgeStr.includes("nature") || badgeStr.includes("mountain") || badgeStr.includes("explorer"))) score += 15;
+           if (dest.tag === "Beach" && (badgeStr.includes("beach") || badgeStr.includes("island") || badgeStr.includes("ocean"))) score += 15;
+           if (dest.tag === "Cultural" && (badgeStr.includes("cultural") || badgeStr.includes("history") || badgeStr.includes("connoisseur"))) score += 15;
+           if (dest.tag === "City Escape" && (badgeStr.includes("urban") || badgeStr.includes("city"))) score += 15;
+           if (dest.tag === "Adventure" && (badgeStr.includes("adventure") || badgeStr.includes("nomad") || badgeStr.includes("wolf"))) score += 15;
+           
+           if (dest.rating >= 4.9) score += 2;
+           if (dest.reviews > 3000) score += 1;
+           return { ...dest, score };
+        });
+
+        // Sort by highest score first
+        scored.sort((a, b) => b.score - a.score);
+        
+        // Take the top 6 organically generated locations
+        setPopularDestinations(scored.slice(0, 6));
+      } catch (err) {
+        console.error("Native Rec Engine Error:", err);
+        // Instant Fallback
+        const shuffled = [...globalDestinations].sort(() => 0.5 - Math.random());
+        setPopularDestinations(shuffled.slice(0, 6));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    getRecommendations();
   }, []);
 
   return (
@@ -75,24 +112,28 @@ const Homepage = () => {
               <button className="pg-text-link" onClick={() => navigate("/Show")}>See All Destinations →</button>
             </div>
             
+            {isLoading ? (
+               <div style={{ color: "white", padding: "40px", textAlign: "center" }}>Loading trending destinations via AI...</div>
+            ) : (
             <div className="pg-card-grid pg-card-grid-3">
               {popularDestinations.map((dest, i) => (
                 <article className="pg-dest-card" key={i}>
                   <div className="pg-dest-img-wrap">
-                    <img src={dest.image} alt={dest.title} className="pg-dest-img" />
+                    <img src={dest.img} alt={dest.city} className="pg-dest-img" />
                     <div className="pg-dest-badge">⭐ {dest.rating}</div>
                   </div>
                   <div className="pg-dest-body">
-                    <h3>{dest.title}</h3>
+                    <h3>{dest.city}</h3>
                     <div className="pg-dest-meta">
                       <span>🧭 {dest.days}</span>
                       <span>🛡️ Verified Safe</span>
                     </div>
-                    <button className="pg-action-link" onClick={() => navigate("/Destinationdetail")}>View Details</button>
+                    <button className="pg-action-link" onClick={() => navigate(`/Destinationdetail?name=${encodeURIComponent(dest.city)}`)}>View Details</button>
                   </div>
                 </article>
               ))}
             </div>
+            )}
           </div>
         </section>
 
