@@ -54,6 +54,9 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'success', message: 'Backend is running correctly.' });
 });
 
+const { errorHandler } = require('./middleware/errorHandler');
+app.use(errorHandler);
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('User connected to socket:', socket.id);
@@ -94,7 +97,7 @@ io.on('connection', (socket) => {
 // Serve Frontend static files in Production
 app.use(express.static(path.join(__dirname, '../dist')));
 
-app.get('*', (req, res) => {
+app.get(/^(.*)$/, (req, res) => {
   res.sendFile(path.join(__dirname, '../dist', 'index.html'));
 });
 

@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const activeQuery = "udaipur";
 const run = async () => {
     try {
-        const genAI = new GoogleGenerativeAI("AIzaSyBRKM4Mq-mKWnDUpfvUiJskcVhN7UVeiQA");
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "YOUR_API_KEY_HERE");
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
         
         const prompt = `Analyze this travel query: "${activeQuery}".

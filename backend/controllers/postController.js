@@ -6,6 +6,10 @@ const User = require('../models/User');
 // @desc    Get all public posts for the global community timeline
 exports.getFeed = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
     // Optionally we could filter out follower-only posts. 
     // Right now, simply getting all 'public' posts is easy globally.
     // If user is logged in, perhaps they get public + followers.
@@ -14,7 +18,9 @@ exports.getFeed = async (req, res) => {
     const posts = await Post.find(filter)
       .populate('user', ['name'])
       .populate('comments.user', ['name'])
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     res.json(posts);
   } catch (err) {
@@ -27,10 +33,17 @@ exports.getFeed = async (req, res) => {
 // @desc    Get all posts strictly for the current logged-in user
 exports.getMyPosts = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
     const posts = await Post.find({ user: req.user.id })
       .populate('user', ['name'])
       .populate('comments.user', ['name'])
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
     res.json(posts);
   } catch (err) {
     console.error(err);

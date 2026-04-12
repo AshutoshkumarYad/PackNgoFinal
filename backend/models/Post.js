@@ -25,4 +25,7 @@ const postSchema = new mongoose.Schema({
   shares: { type: Number, default: 0 }
 }, { timestamps: true });
 
+postSchema.index({ user: 1, createdAt: -1 });
+postSchema.index({ visibility: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Post', postSchema);
