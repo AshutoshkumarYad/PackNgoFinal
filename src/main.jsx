@@ -18,12 +18,14 @@ import Signup from "./Signup";
 import Login from "./Login";
 import Show from "./Show";
 import User from "./User";
+import PublicProfile from "./PublicProfile";
 import Destinationdetail from "./Destinationdetail";
 import Tripplanner from "./Tripplanner";
 import CommunityFeed from "./CommunityFeed";
 import Bookings from "./Bookings";
 import MapNavigate from "./MapNavigate";
 import LiveTrack from "./LiveTrack";
+import FloatingEmergency from "./FloatingEmergency";
 
 const router = createBrowserRouter([
   {
@@ -45,6 +47,10 @@ const router = createBrowserRouter([
   {
     path: '/User',
     element: <User />
+  },
+  {
+    path: '/profile/:id',
+    element: <PublicProfile />
   },
   {
     path: '/Show',
@@ -78,6 +84,7 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
+    <FloatingEmergency />
     <RouterProvider router={router} />
   </React.StrictMode>,
 )

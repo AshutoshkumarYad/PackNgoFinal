@@ -36,15 +36,16 @@ export default defineConfig({
         ]
       },
       manifest: {
-        name: 'PackNgo',
-        short_name: 'PackNgo',
+        name: 'PackNgo Pro',
+        short_name: 'PackNgo Pro',
         description: 'Your Smart Collaborative Travel Companion',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
+        start_url: '/',
         icons: [
-          { src: '/image.png', sizes: '192x192', type: 'image/png' },
-          { src: '/image.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+          { src: '/final-icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/final-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
         ]
       }
     })

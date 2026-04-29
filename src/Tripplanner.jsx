@@ -30,6 +30,8 @@ const Tripplanner = () => {
   const [chatHistory, setChatHistory] = useState([]); 
   const [geminiHistory, setGeminiHistory] = useState([]); 
   const [expenses, setExpenses] = useState([]);
+  const [emergencyContacts, setEmergencyContacts] = useState(null);
+  const [expenseCategory, setExpenseCategory] = useState("Food");
   
   // View states & widgets
   const [viewMode, setViewMode] = useState("itinerary"); // itinerary, budget, converter
@@ -56,7 +58,12 @@ const Tripplanner = () => {
     if (!token) return;
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.post("/api/trips", tripData, config);
+      const { data } = await axios.post("/api/trips", tripData, config);
+      if (data && data._id && tripData.id !== data._id) {
+          setActiveTripId(data._id);
+          setSavedTrips(prev => prev.map(t => t.id === tripData.id ? { ...t, id: data._id } : t));
+      }
+      window.dispatchEvent(new Event('tripUpdated'));
     } catch (e) {
       console.error("Failed to save trip", e);
     }
@@ -114,6 +121,7 @@ const Tripplanner = () => {
     setChatHistory(trip.chatHistory || []);
     setGeminiHistory(trip.geminiHistory || []);
     setExpenses(trip.expenses || []);
+    setEmergencyContacts(trip.emergencyContacts || null);
     setHasGenerated(true);
     setViewMode("itinerary");
   };
@@ -130,6 +138,7 @@ const Tripplanner = () => {
     setChatHistory([]);
     setGeminiHistory([]);
     setExpenses([]);
+    setEmergencyContacts(null);
     setHasGenerated(false);
     setViewMode("itinerary");
   };
@@ -197,13 +206,23 @@ const Tripplanner = () => {
         model: "gemini-flash-latest",
         systemInstruction: `You are an expert travel planner for 'PackNgo'. 
         The user will provide destination, dates, traveler count, budget, and style.
-        Generate a daily itinerary.
-        Return strictly a JSON array of objects, where each object represents a day or an activity.
-        Each object MUST have these exact string keys:
-        - "dayTitle" (e.g. "Day 1: Arrival & Exploration")
-        - "title" (e.g. "Settle in")
-        - "description" (e.g. "Arrive at destination...")
-        Do not return any markdown formatting outside of the JSON array. Only the JSON array.`,
+        Generate a daily itinerary AND local emergency contact numbers.
+        Return strictly a JSON object exactly matching this structure:
+        {
+          "emergencyContacts": {
+            "police": "local police number",
+            "ambulance": "local ambulance number",
+            "fire": "local fire number"
+          },
+          "itinerary": [
+            {
+              "dayTitle": "Day 1: Arrival",
+              "title": "Getting Settled",
+              "description": "Details about day 1"
+            }
+          ]
+        }
+        Do not return any markdown formatting outside of the JSON object. Only the JSON object.`,
         generationConfig: { responseMimeType: "application/json" }
       });
 
@@ -211,9 +230,14 @@ const Tripplanner = () => {
       
       const result = await model.generateContent(prompt);
       let responseText = result.response.text();
+      responseText = responseText.replace(/```json/gi, "").replace(/```/g, "").trim();
       
-      const parsedItinerary = JSON.parse(responseText.trim());
+      const parsedData = JSON.parse(responseText);
+      const parsedItinerary = parsedData.itinerary || [];
+      const parsedEmergency = parsedData.emergencyContacts || null;
+
       setItinerary(Array.isArray(parsedItinerary) ? parsedItinerary : [parsedItinerary]);
+      setEmergencyContacts(parsedEmergency);
       
       const newGeminiHistory = [
         { role: "user", parts: [{ text: prompt }] },
@@ -235,6 +259,7 @@ const Tripplanner = () => {
         chatHistory: newChatHistory,
         geminiHistory: newGeminiHistory,
         expenses: [],
+        emergencyContacts: parsedEmergency,
         hasGenerated: true
       };
 
@@ -242,8 +267,9 @@ const Tripplanner = () => {
 
       setSavedTrips(prev => {
         const exists = prev.find(t => t.id === currentId);
-        if (exists) return prev.map(t => t.id === currentId ? tripRecord : t);
-        return [tripRecord, ...prev];
+        let updated = exists ? prev.map(t => t.id === currentId ? tripRecord : t) : [tripRecord, ...prev];
+        if (updated.length > 5) updated = updated.slice(0, 5);
+        return updated;
       });
 
     } catch (error) {
@@ -320,8 +346,11 @@ const Tripplanner = () => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const amount = Number(fd.get("amount"));
-    const desc = fd.get("description");
     const category = fd.get("category");
+    let desc = category;
+    if (category === "Other") {
+      desc = fd.get("description");
+    }
     if (!amount || !desc) return;
     
     const newExpense = { 
@@ -344,15 +373,13 @@ const Tripplanner = () => {
     modifyActiveTrip({ expenses: newExpenses });
   };
 
-  const handleConvert = (e) => {
-    e.preventDefault();
+  useEffect(() => {
     if (!exchangeRates[fromCurrency] || !exchangeRates[toCurrency]) return;
-    
-    // Convert to USD first (base), then to target
-    const inUSD = convertAmount / exchangeRates[fromCurrency];
+    const amount = Number(convertAmount) || 0;
+    const inUSD = amount / exchangeRates[fromCurrency];
     const result = inUSD * exchangeRates[toCurrency];
     setConvertedResult(result.toFixed(2));
-  };
+  }, [convertAmount, fromCurrency, toCurrency, exchangeRates]);
 
   // Helper to determine budget amount
   const getBudgetLimit = () => {
@@ -517,6 +544,20 @@ const Tripplanner = () => {
                 {/* ITINERARY VIEW */}
                 {viewMode === 'itinerary' && (
                   <>
+                    {emergencyContacts && (
+                      <div style={{ background: 'rgba(255, 0, 0, 0.1)', borderLeft: '4px solid #ef4444', padding: '15px 20px', borderRadius: '4px', margin: '20px 0', display: 'flex', gap: '20px', alignItems: 'center' }}>
+                        <div style={{ fontSize: '24px' }}>🚨</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                           <span style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase' }}>Local Emergency Contacts</span>
+                           <div style={{ display: 'flex', gap: '20px', fontSize: '13px', color: '#fff' }}>
+                              {emergencyContacts.police && <span><b style={{ color: '#a0a0b8' }}>Police:</b> {emergencyContacts.police}</span>}
+                              {emergencyContacts.ambulance && <span><b style={{ color: '#a0a0b8' }}>Ambulance:</b> {emergencyContacts.ambulance}</span>}
+                              {emergencyContacts.fire && <span><b style={{ color: '#a0a0b8' }}>Fire:</b> {emergencyContacts.fire}</span>}
+                           </div>
+                        </div>
+                      </div>
+                    )}
+
                     {itinerary.map((item, index) => (
                       <div className="tp-itinerary-item" key={index}>
                         <div className="tp-ai-sparkle">✦</div>
@@ -575,14 +616,16 @@ const Tripplanner = () => {
 
                     <form onSubmit={handleAddExpense} style={{ display: 'flex', gap: '10px', marginBottom: '30px', background: '#1a1f2e', padding: '20px', borderRadius: '12px' }}>
                       <input type="number" name="amount" placeholder="Amount ($)" required style={{ flex: '0 0 100px', padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#0a0e1a', color: '#fff' }} />
-                      <input type="text" name="description" placeholder="What did you buy?" required style={{ flex: '1', padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#0a0e1a', color: '#fff' }} />
-                      <select name="category" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#0a0e1a', color: '#fff' }}>
+                      <select name="category" value={expenseCategory} onChange={e => setExpenseCategory(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#0a0e1a', color: '#fff' }}>
                         <option value="Food">Food</option>
                         <option value="Transport">Transport</option>
                         <option value="Activity">Activity</option>
                         <option value="Accommodation">Accommodation</option>
                         <option value="Other">Other</option>
                       </select>
+                      {expenseCategory === 'Other' && (
+                        <input type="text" name="description" placeholder="Where did you spend?" required style={{ flex: '1', padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#0a0e1a', color: '#fff' }} />
+                      )}
                       <button type="submit" style={{ padding: '10px 20px', background: '#2e7bff', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Add</button>
                     </form>
 
@@ -611,7 +654,7 @@ const Tripplanner = () => {
                 {viewMode === 'converter' && (
                   <div className="tp-currency-section" style={{ background: '#1a1f2e', padding: '30px', borderRadius: '12px', color: '#fff' }}>
                     <h3 style={{ marginBottom: '20px' }}>Real-time Exchange Rate</h3>
-                    <form onSubmit={handleConvert} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                       <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                         <input type="number" value={convertAmount} onChange={e => setConvertAmount(e.target.value)} required style={{ flex: '1', padding: '12px', fontSize: '16px', borderRadius: '6px', border: '1px solid #374151', background: '#0a0e1a', color: '#fff' }} />
                         
@@ -644,10 +687,7 @@ const Tripplanner = () => {
                         </select>
                       </div>
 
-                      <button type="submit" style={{ padding: '15px', fontSize: '16px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px' }}>
-                        Convert Currency
-                      </button>
-                    </form>
+                    </div>
                   </div>
                 )}
               </>

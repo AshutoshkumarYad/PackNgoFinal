@@ -11,6 +11,11 @@ const postSchema = new mongoose.Schema({
   image: { type: String, default: '' }, // Server path to multer uploaded file
   mediaType: { type: String, enum: ['image', 'video'], default: 'image' },
   tags: [{ type: String }],
+  location: {
+    lat: { type: Number },
+    lng: { type: Number },
+    country: { type: String }
+  },
   visibility: {
     type: String,
     enum: ['public', 'followers'],

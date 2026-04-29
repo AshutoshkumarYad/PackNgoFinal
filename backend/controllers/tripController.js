@@ -4,7 +4,7 @@ const Trip = require('../models/Trip');
 // @desc    Get logged in user's trips
 exports.getTrips = async (req, res) => {
   try {
-    const trips = await Trip.find({ user: req.user.id }).sort({ updatedAt: -1 });
+    const trips = await Trip.find({ user: req.user.id }).sort({ updatedAt: -1 }).limit(5);
     res.json(trips);
   } catch (error) {
     console.error('Get Trips Error:', error);
@@ -16,7 +16,7 @@ exports.getTrips = async (req, res) => {
 // @desc    Save or Update a trip
 exports.saveTrip = async (req, res) => {
   try {
-    const { id, name, destination, startDate, endDate, travelers, budget, travelStyle, itinerary, chatHistory, geminiHistory, hasGenerated, expenses } = req.body;
+    const { id, name, destination, startDate, endDate, travelers, budget, travelStyle, itinerary, chatHistory, geminiHistory, hasGenerated, expenses, emergencyContacts } = req.body;
 
     let trip = await Trip.findOne({ _id: id, user: req.user.id }).catch(() => null);
 
@@ -33,6 +33,7 @@ exports.saveTrip = async (req, res) => {
       trip.chatHistory = chatHistory;
       trip.geminiHistory = geminiHistory;
       trip.hasGenerated = hasGenerated;
+      trip.emergencyContacts = emergencyContacts || null;
       if (expenses !== undefined) trip.expenses = expenses;
 
       await trip.save();
@@ -41,7 +42,7 @@ exports.saveTrip = async (req, res) => {
       // Create
       trip = await Trip.create({
         user: req.user.id,
-        name, destination, startDate, endDate, travelers, budget, travelStyle, itinerary, chatHistory, geminiHistory, hasGenerated, expenses: expenses || []
+        name, destination, startDate, endDate, travelers, budget, travelStyle, itinerary, chatHistory, geminiHistory, hasGenerated, expenses: expenses || [], emergencyContacts: emergencyContacts || null
       });
       return res.status(201).json(trip);
     }

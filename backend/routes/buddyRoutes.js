@@ -20,14 +20,24 @@ router.get('/', protect, async (req, res) => {
       return res.json(ownRequests);
     }
 
+    const followingList = profile ? profile.following.map(id => id.toString()) : [];
+    
     const trips = await Trip.find({ user: req.user.id });
     const destinations = trips.map(t => t.destination.split(',')[0].trim());
 
-    if (destinations.length === 0) {
+    // Only skip fetching extra records if we aren't following anyone AND have no active trips
+    if (destinations.length === 0 && followingList.length === 0) {
       return res.json(ownRequests);
     }
 
     const orConditions = [{ user: req.user.id }];
+    
+    // Add condition: Any request from people I follow
+    if (followingList.length > 0) {
+      orConditions.push({ user: { $in: profile.following } });
+    }
+
+    // Add condition: Any request matching my destinations
     destinations.forEach(dest => {
       orConditions.push({ destination: { $regex: new RegExp(dest, 'i') } });
     });
@@ -42,8 +52,13 @@ router.get('/', protect, async (req, res) => {
     profiles.forEach(p => profileMap[p.user.toString()] = p.openToBuddy);
 
     requests = requests.filter(r => {
-      if (r.user._id.toString() === req.user.id) return true;
-      return profileMap[r.user._id.toString()] === true;
+      const requesterId = r.user._id.toString();
+      // Always see my own
+      if (requesterId === req.user.id) return true;
+      // Always see people I am actively following
+      if (followingList.includes(requesterId)) return true;
+      // If it's a stranger from the destination regex match, they must be open to buddy matching
+      return profileMap[requesterId] === true;
     });
 
     res.json(requests);

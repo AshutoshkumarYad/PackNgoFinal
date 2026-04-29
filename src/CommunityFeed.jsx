@@ -20,6 +20,8 @@ export default function CommunityFeed() {
   // Navigation State
   const [activeTab, setActiveTab] = useState("Stories"); // 'Stories', 'Tips', 'Questions', 'Buddy Requests'
   const [openToBuddy, setOpenToBuddy] = useState(false);
+  const [targetChatUser, setTargetChatUser] = useState(null);
+  const [sharedPostToChat, setSharedPostToChat] = useState(null);
 
   // Post Creation States
   const [newPostTitle, setNewPostTitle] = useState("");
@@ -135,6 +137,14 @@ export default function CommunityFeed() {
     try {
       const { data } = await axios.put(`/api/posts/${postId}/share`, {}, { headers: { Authorization: `Bearer ${token}` }});
       setPosts(posts.map(p => p._id === postId ? { ...p, shares: data.shares } : p));
+      
+      const postToShare = posts.find(p => p._id === postId);
+      if (postToShare) {
+         setSharedPostToChat(postToShare);
+         setTimeout(() => {
+            document.getElementById('community-chat-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+         }, 150);
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -208,11 +218,17 @@ export default function CommunityFeed() {
     } catch(err) { console.error(err); }
   };
 
-  const handleConnectBuddy = async (reqId) => {
+  const handleConnectBuddy = async (req) => {
     const token = getUserToken();
     try {
-      await axios.put(`/api/buddies/${reqId}/connect`, {}, { headers: { Authorization: `Bearer ${token}` } });
-      alert("Connected! Feel free to start a chat now.");
+      await axios.put(`/api/buddies/${req._id}/connect`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setTargetChatUser(req.user);
+      
+      // Auto-scroll screen directly to the chat module so they can start talking immediately
+      setTimeout(() => {
+         document.getElementById('community-chat-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+      
     } catch(err) { console.error(err); }
   };
 
@@ -387,7 +403,7 @@ export default function CommunityFeed() {
              ) : buddyRequests.map(req => (
                <div key={req._id} className="cf-post">
                  <div className="cf-post-header">
-                   <img className="cf-avatar" src={req.user?.avatar || "https://i.pravatar.cc/100?img=1"} alt="Avatar" />
+                   <img className="cf-avatar" src={req.user?.avatar ? (req.user.avatar.startsWith('/uploads') ? `${req.user.avatar}` : req.user.avatar) : "https://i.pravatar.cc/100?img=1"} alt="Avatar" style={{ objectFit: 'cover' }} />
                    <div className="cf-user-info">
                      <span className="cf-user-name">{req.user?.name || "Anonymous Traveler"}</span>
                      <span className="cf-post-time">is traveling to {req.destination}!</span>
@@ -400,7 +416,7 @@ export default function CommunityFeed() {
                  </div>
                  <div style={{ marginTop: '15px', textAlign: 'right' }}>
                    <button 
-                      onClick={() => handleConnectBuddy(req._id)} 
+                      onClick={() => handleConnectBuddy(req)} 
                       style={{ background: '#ec4899', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' }}
                    >
                      Connect 👋
@@ -416,8 +432,12 @@ export default function CommunityFeed() {
             return (
           <article key={post._id} id={`post-${post._id}`} className="cf-post">
             <header className="cf-post-header">
-              <div className="cf-post-user">
-                <div className="cf-avatar">{post.user?.name ? post.user.name.charAt(0).toUpperCase() : "U"}</div>
+              <div className="cf-post-user" onClick={() => post.user?._id && navigate(`/profile/${post.user._id}`)} style={{ cursor: 'pointer' }}>
+                {post.user?.avatar ? (
+                  <img className="cf-avatar" src={post.user.avatar.startsWith('/uploads') ? `${post.user.avatar}` : post.user.avatar} alt={post.user?.name || "U"} style={{ objectFit: 'cover' }} />
+                ) : (
+                  <div className="cf-avatar">{post.user?.name ? post.user.name.charAt(0).toUpperCase() : "U"}</div>
+                )}
                 <div>
                   <div className="cf-user-name">{post.user?.name || "Unknown User"}</div>
                   <div className="cf-user-meta">{isMedia ? 'Creator' : 'Story Highlights'}</div>
@@ -481,9 +501,13 @@ export default function CommunityFeed() {
                 <div className="cf-comments-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '200px', overflowY: 'auto' }}>
                   {post.comments?.map((comment, idx) => (
                     <div key={idx} style={{ display: 'flex', gap: '10px', fontSize: '13px' }}>
-                      <div className="cf-avatar tiny" style={{ width: '24px', height: '24px', fontSize: '10px' }}>
-                         {comment.user?.name ? comment.user.name.charAt(0).toUpperCase() : "U"}
-                      </div>
+                      {comment.user?.avatar ? (
+                        <img className="cf-avatar tiny" src={comment.user.avatar.startsWith('/uploads') ? `${comment.user.avatar}` : comment.user.avatar} alt={comment.user?.name || "U"} style={{ width: '24px', height: '24px', objectFit: 'cover' }} />
+                      ) : (
+                        <div className="cf-avatar tiny" style={{ width: '24px', height: '24px', fontSize: '10px' }}>
+                           {comment.user?.name ? comment.user.name.charAt(0).toUpperCase() : "U"}
+                        </div>
+                      )}
                       <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '12px', flex: 1 }}>
                         <strong style={{ display: 'block', color: '#fff', marginBottom: '4px', fontSize: '12px' }}>{comment.user?.name || "User"}</strong>
                         <span style={{ color: '#a0a0b8' }}>{comment.text}</span>
@@ -519,9 +543,13 @@ export default function CommunityFeed() {
               
               return (
                 <div key={profile._id} className="cf-side-user">
-                  <div className="cf-avatar tiny" style={{ background: gradients[i % gradients.length] }}>
-                    {nameInitial}
-                  </div>
+                  {profile.avatar ? (
+                    <img className="cf-avatar tiny" src={profile.avatar.startsWith('/uploads') ? `${profile.avatar}` : profile.avatar} alt={nameInitial} style={{ objectFit: 'cover' }} />
+                  ) : (
+                    <div className="cf-avatar tiny" style={{ background: gradients[i % gradients.length] }}>
+                      {nameInitial}
+                    </div>
+                  )}
                   <div className="cf-side-user-info">
                     <div className="name">{profile.user.name}</div>
                     <div className="meta">{count.toLocaleString()} followers</div>
@@ -591,8 +619,8 @@ export default function CommunityFeed() {
           </section>
 
           {/* PRIVATE CHAT MODULE */}
-          <section className="cf-side-chat-module">
-             <CommunityChat token={getUserToken()} currentUserId={getUserId()} />
+          <section id="community-chat-panel" className="cf-side-chat-module">
+             <CommunityChat token={getUserToken()} currentUserId={getUserId()} targetChatUser={targetChatUser} sharedPostToChat={sharedPostToChat} />
           </section>
 
         </aside>

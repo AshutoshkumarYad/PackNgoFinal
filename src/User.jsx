@@ -61,6 +61,7 @@ export default function User() {
   const [userData, setUserData] = useState(DEFAULT_PROFILE);
   const [posts, setPosts] = useState([]);
   const [savedPosts, setSavedPosts] = useState([]);
+  const [userReviews, setUserReviews] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("posts");
   
@@ -71,6 +72,7 @@ export default function User() {
   const [showFollowersModal, setShowFollowersModal] = useState(false);
   const [showFollowingModal, setShowFollowingModal] = useState(false);
   const [activeActivityId, setActiveActivityId] = useState(null);
+  const [showAllBadges, setShowAllBadges] = useState(false);
   
   const globeEl = useRef();
   useEffect(() => {
@@ -122,11 +124,12 @@ export default function User() {
 
       const config = { headers: { Authorization: `Bearer ${token}` } };
       try {
-        const [profileRes, postsRes, savedRes, connRes] = await Promise.all([
+        const [profileRes, postsRes, savedRes, connRes, reviewsRes] = await Promise.all([
           axios.get("/api/profile/me", config),
           axios.get("/api/posts/me", config),
           axios.get("/api/posts/saved", config),
-          axios.get("/api/profile/connections", config).catch(() => ({ data: { followers: [], following: [] } }))
+          axios.get("/api/profile/connections", config).catch(() => ({ data: { followers: [], following: [] } })),
+          axios.get("/api/reviews/user/me", config).catch(() => ({ data: [] }))
         ]);
         
         const fetchedProfile = profileRes.data;
@@ -137,6 +140,7 @@ export default function User() {
         setUserData({ ...DEFAULT_PROFILE, ...fetchedProfile });
         setPosts(postsRes.data || []);
         setSavedPosts(savedRes.data || []);
+        setUserReviews(reviewsRes.data || []);
         if (connRes && connRes.data) {
           setConnections(connRes.data);
         }
@@ -144,6 +148,26 @@ export default function User() {
         console.error("Failed to load user data");
       } finally {
         setIsLoading(false);
+      }
+      
+      // Auto-ping GPS location for distance updates
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          try {
+            await axios.post("/api/profile/location-ping", {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude
+            }, config);
+            
+            // Re-fetch profile to sync updated kmTraveled
+            const updatedProfileRes = await axios.get("/api/profile/me", config);
+            if (updatedProfileRes.data) {
+               setUserData(prev => ({ ...prev, kmTraveled: updatedProfileRes.data.kmTraveled }));
+            }
+          } catch (e) {
+            console.error("Background GPS Ping failed", e);
+          }
+        }, () => {}, { enableHighAccuracy: false, timeout: 5000 });
       }
     };
     
@@ -162,9 +186,11 @@ export default function User() {
       handle: userData.handle || "",
       bio: userData.bio || "",
       location: userData.location || "",
+      interests: userData.interests ? userData.interests.join(', ') : "",
       emergencyContacts: contacts.slice(0, 3),
       safetyPin: userData.safetyPin || "",
       openToBuddy: userData.openToBuddy || false,
+      isPrivate: userData.isPrivate || false,
       avatar: null
     });
     setIsEditingProfile(true);
@@ -180,8 +206,10 @@ export default function User() {
       formData.append("handle", editForm.handle);
       formData.append("bio", editForm.bio);
       formData.append("location", editForm.location);
+      if (editForm.interests) formData.append("interests", editForm.interests);
       if (editForm.emergencyContacts) formData.append("emergencyContacts", JSON.stringify(editForm.emergencyContacts));
       if (editForm.safetyPin) formData.append("safetyPin", editForm.safetyPin);
+      formData.append("isPrivate", editForm.isPrivate);
       if (editForm.avatar) {
         formData.append("avatar", editForm.avatar);
       }
@@ -194,6 +222,25 @@ export default function User() {
       setIsEditingProfile(false);
     } catch(err) {
       console.error("Save profile error", err);
+    }
+  };
+
+  const handleFollowToggle = async (targetId) => {
+    const token = getUserToken();
+    if (!token) return;
+    try {
+      const { data } = await axios.put(`/api/profile/follow/${targetId}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      
+      // Update local state connections relying on the server response
+      // Following modal shows 'connections.following'. We update the list by keeping those still in data.followingList
+      // But data returns the whole nested object? Actually `followUser` in backend just returns `currentProfile.following` array, but we need full objects.
+      // So we can blindly refetch connections via an inline api call for guaranteed safety
+      const connRes = await axios.get("/api/profile/connections", { headers: { Authorization: `Bearer ${token}` } });
+      if (connRes && connRes.data) {
+         setConnections(connRes.data);
+      }
+    } catch(err) {
+      console.error("Failed to unfollow", err);
     }
   };
 
@@ -217,8 +264,24 @@ export default function User() {
 
   // --- Creating Post Logics ---
   const openCreatePost = () => {
-    setPostForm({ title: "", description: "", image: null, tags: "", visibility: "public" });
+    setPostForm({ title: "", description: "", image: null, tags: "", visibility: "public", location: null, country: "" });
     setIsCreatingPost(true);
+    
+    // Automatically tag location for the post
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        let country = "";
+        try {
+          const res = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          if (res.data && res.data.address && res.data.address.country) {
+             country = res.data.address.country;
+          }
+        } catch (e) { console.error("Reverse Geocoding failed", e); }
+        
+        setPostForm(prev => ({...prev, location: { lat: latitude, lng: longitude }, country }));
+      }, () => {});
+    }
   };
 
   const publishPost = async (e) => {
@@ -235,6 +298,10 @@ export default function User() {
       formData.append("visibility", postForm.visibility);
       if (postForm.image) {
         formData.append("image", postForm.image);
+      }
+      if (postForm.location || postForm.country) {
+        const locationPayload = { ...(postForm.location || {}), country: postForm.country };
+        formData.append("location", JSON.stringify(locationPayload));
       }
 
       const config = { headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" } };
@@ -479,6 +546,11 @@ export default function User() {
                 <p className="handle">{userData.handle}</p>
                 <p className="bio">{userData.bio}</p>
                 <p className="location">📍 {userData.location}</p>
+                {userData.interests && userData.interests.length > 0 && (
+                  <p className="interests" style={{ color: '#a0a0b8', fontSize: '13px', marginTop: '4px' }}>
+                    💡 Interests: {userData.interests.join(', ')}
+                  </p>
+                )}
                 <div className="stats-row">
                   <div className="stat" onClick={() => setShowFollowersModal(true)} style={{ cursor: 'pointer' }} title="View Followers">
                     <div className="stat-number">{connections.followers?.length || userData.followers?.length || 0}</div>
@@ -498,9 +570,14 @@ export default function User() {
                   </label>
                 </div>
                 <div className="badges-inline">
-                  {userData.badges?.map((badge, index) => (
+                  {(showAllBadges ? userData.badges : userData.badges?.slice(0, 5))?.map((badge, index) => (
                     <span key={index} className="chip">{badge}</span>
                   ))}
+                  {userData.badges && userData.badges.length > 5 && (
+                    <span className="chip" onClick={() => setShowAllBadges(!showAllBadges)} style={{cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.3)'}}>
+                      {showAllBadges ? '▴ Less' : `▾ +${userData.badges.length - 5}`}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -590,7 +667,17 @@ export default function User() {
                                 <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
                                   {post.comments?.map((c, i) => (
                                     <div key={i} style={{ fontSize: '12px', padding: '4px 0' }}>
-                                      <strong>{c.user?.name || "User"}:</strong> <span style={{ color: '#aaa' }}>{c.text}</span>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {c.user?.avatar ? (
+                                          <img src={c.user.avatar.startsWith('/uploads') ? `${c.user.avatar}` : c.user.avatar} alt={c.user?.name || "U"} style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} />
+                                        ) : (
+                                          <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#2e7bff', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>
+                                            {c.user?.name ? c.user.name.charAt(0).toUpperCase() : "U"}
+                                          </div>
+                                        )}
+                                        <strong>{c.user?.name || "User"}:</strong> 
+                                        <span style={{ color: '#aaa' }}>{c.text}</span>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
@@ -719,10 +806,35 @@ export default function User() {
           )}
 
           {activeTab === 'reviews' && (
-            <div className="empty-state">
-              <div className="empty-icon">⭐</div>
-              <h3>No reviews yet</h3>
-              <p>Share your experiences about places you've visited!</p>
+            <div className="content-grid">
+              {userReviews.length === 0 ? (
+                <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
+                  <div className="empty-icon">⭐</div>
+                  <h3>No reviews yet</h3>
+                  <p>Share your experiences about places you've visited!</p>
+                </div>
+              ) : (
+                userReviews.map((review) => (
+                  <div key={review._id} style={{ backgroundColor: '#1a1f2e', borderRadius: '12px', padding: '25px', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                      <h3 onClick={() => navigate(`/Destinationdetail?name=${encodeURIComponent(review.destinationName)}`)} style={{ margin: 0, fontSize: '18px', cursor: 'pointer', color: '#38bdf8' }}>
+                        {review.destinationName}
+                      </h3>
+                      <div style={{ display: 'flex', gap: '3px' }}>
+                        {[...Array(review.rating)].map((_, i) => (
+                          <span key={i} style={{ color: '#fbbf24', fontSize: '16px' }}>★</span>
+                        ))}
+                      </div>
+                    </div>
+                    <p style={{ color: '#cbd5e1', fontSize: '14px', lineHeight: '1.6', flex: 1, margin: 0 }}>
+                      {review.text}
+                    </p>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '15px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      {new Date(review.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
 
@@ -854,9 +966,21 @@ export default function User() {
 
           <section className="panel">
             <h3>Badges Earned</h3>
-            {userData.badges?.map((badge, index) => (
+            {(showAllBadges ? userData.badges : userData.badges?.slice(0, 5))?.map((badge, index) => (
               <div key={index} className="badge-card">🏆 {badge}</div>
             ))}
+            {userData.badges && userData.badges.length > 5 && (
+                <button onClick={() => setShowAllBadges(!showAllBadges)} style={{width: '100%', padding: '8px', marginTop: '10px', background: 'transparent', border: '1px solid #38bdf8', color: '#38bdf8', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'}}>
+                  {showAllBadges ? 'Show Less ▴' : `View ${userData.badges.length - 5} More ▾`}
+                </button>
+            )}
+            {userData.badges && userData.badges.length >= 20 && (
+                <div style={{ marginTop: '15px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', borderRadius: '8px', padding: '12px', textAlign: 'center', boxShadow: '0 4px 15px rgba(245, 158, 11, 0.2)' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff', marginBottom: '4px', textTransform: 'uppercase' }}>🎉 Ultimate Traveler Reward</div>
+                    <div style={{ fontSize: '20px', fontWeight: '900', color: '#000', letterSpacing: '2px', background: '#ffe4e6', display: 'inline-block', padding: '2px 10px', borderRadius: '4px', border: '2px dashed #f43f5e' }}>PACKNGO20</div>
+                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.9)', marginTop: '8px', lineHeight: '1.4' }}>You've earned 20+ badges! 🥇<br/>Use this exclusive coupon code for <strong>20% off</strong> your next trip booking.</div>
+                </div>
+            )}
           </section>
 
           <section className="panel">
@@ -941,12 +1065,22 @@ export default function User() {
             <div className="up-modal-body" style={{ maxHeight: '300px', overflowY: 'auto', padding: '20px' }}>
               {connections.following.length === 0 ? <p style={{ color: '#aaa', textAlign: 'center' }}>Not following anyone.</p> : (
                 connections.following.map(f => (
-                  <div key={f._id} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-                    <img src={f.avatar?.startsWith('/uploads') ? `${f.avatar}` : (f.avatar || 'https://via.placeholder.com/40')} alt={f.name} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
-                    <div>
-                      <div style={{ fontWeight: 'bold', color: '#fff' }}>{f.name}</div>
-                      <div style={{ fontSize: '12px', color: '#a0a0b8' }}>{f.handle}</div>
+                  <div key={f._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <img src={f.avatar?.startsWith('/uploads') ? `${f.avatar}` : (f.avatar || 'https://via.placeholder.com/40')} alt={f.name} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                      <div>
+                        <div style={{ fontWeight: 'bold', color: '#fff' }}>{f.name}</div>
+                        <div style={{ fontSize: '12px', color: '#a0a0b8' }}>{f.handle}</div>
+                      </div>
                     </div>
+                    <button 
+                      onClick={() => handleFollowToggle(f._id)}
+                      style={{ background: 'rgba(255,255,255,0.1)', color: '#a0a0b8', border: 'none', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', transition: '0.2s', ':hover': { background: '#f87171', color: '#fff' } }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#f87171'; e.currentTarget.style.color = '#fff'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#a0a0b8'; }}
+                    >
+                      Unfollow
+                    </button>
                   </div>
                 ))
               )}
@@ -977,6 +1111,10 @@ export default function User() {
                   <div className="up-form-group">
                     <label>Location</label>
                     <input required className="up-form-input" type="text" value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})} />
+                  </div>
+                  <div className="up-form-group">
+                    <label>Interests (comma separated)</label>
+                    <input className="up-form-input" type="text" value={editForm.interests} onChange={e => setEditForm({...editForm, interests: e.target.value})} placeholder="Hiking, Photography, Food" />
                   </div>
                   <div className="up-form-group">
                     <label>Bio</label>
@@ -1011,6 +1149,17 @@ export default function User() {
                     <label>Safety PIN (4 digits)</label>
                     <input required className="up-form-input" type="password" value={editForm.safetyPin} onChange={e => setEditForm({...editForm, safetyPin: e.target.value})} minLength={4} maxLength={4} placeholder="1234" />
                   </div>
+                  <div className="up-form-group" style={{ marginTop: '20px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: '#fff' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={editForm.isPrivate} 
+                        onChange={e => setEditForm({...editForm, isPrivate: e.target.checked})}
+                        style={{ width: '18px', height: '18px' }}
+                      />
+                      Make Account Private (Only followers can see your posts and full profile)
+                    </label>
+                  </div>
                 </div>
               </div>
               <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '15px 0' }} />
@@ -1042,6 +1191,11 @@ export default function User() {
               <div className="up-form-group">
                 <label>Hash Tags (comma separated)</label>
                 <input className="up-form-input" type="text" placeholder="Japan, Travel, Food" value={postForm.tags} onChange={e => setPostForm({...postForm, tags: e.target.value})} />
+              </div>
+              <div className="up-form-group">
+                <label>Country (optional)</label>
+                <input className="up-form-input" type="text" placeholder="e.g. India, Japan" value={postForm.country || ""} onChange={e => setPostForm({...postForm, country: e.target.value})} />
+                <span style={{ fontSize: '11px', color: '#a0a0b8' }}>Adding a country will count towards your Countries Visited stats.</span>
               </div>
               <div className="up-form-group">
                 <label>Visibility</label>

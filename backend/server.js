@@ -77,7 +77,8 @@ io.on('connection', (socket) => {
     
     try {
       if (group) {
-        const newMessage = await Message.create({ sender, group, text });
+        let newMessage = await Message.create({ sender, group, text });
+        newMessage = await newMessage.populate('sender', 'name');
         io.to(group).emit('receive_group_message', newMessage);
       } else {
         const newMessage = await Message.create({ sender, receiver, text });

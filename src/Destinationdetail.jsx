@@ -514,12 +514,26 @@ export default function Destinationdetail() {
                  <span style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '12px' }}>
                     <span style={{ display: 'inline-block', width: '6px', height: '6px', background: '#10b981', borderRadius: '50%' }}></span> Verified
                  </span>
-                 {currentUser && currentUser.user.id === review.user._id && (
+                 {currentUser && currentUser._id === review.user._id && (
                     <button onClick={() => handleDeleteReview(review._id)} style={{ background: '#f87171', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Delete</button>
                  )}
               </div>
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                <img src={review.user.avatar ? (review.user.avatar.startsWith('/uploads') ? `${review.user.avatar}` : review.user.avatar) : 'https://via.placeholder.com/48'} alt={review.user.name} style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
+              <div style={{ display: 'flex', gap: '15px', marginBottom: '15px', cursor: 'pointer' }} onClick={() => navigate(`/profile/${review.user._id}`)}>
+                {review.user.avatar && review.user.avatar.trim() !== '' ? (
+                  <img 
+                    src={review.user.avatar.startsWith('/uploads') ? review.user.avatar : review.user.avatar} 
+                    alt={review.user.name} 
+                    style={{ width: '48px', height: '48px', minWidth: '48px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} 
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(review.user.name || '?')}&background=374151&color=fff&size=48`;
+                    }}
+                  />
+                ) : (
+                  <div style={{ width: '48px', height: '48px', minWidth: '48px', borderRadius: '50%', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0, color: '#fff' }}>
+                    {review.user.name ? review.user.name[0].toUpperCase() : '?'}
+                  </div>
+                )}
                 <div>
                   <div style={{ fontWeight: '600', marginBottom: '5px' }}>{review.user.name}</div>
                   <div style={{ display: 'flex', gap: '3px' }}>
@@ -537,7 +551,7 @@ export default function Destinationdetail() {
           {data.reviews.map((review, idx) => (
             <div key={`mock-${idx}`} style={{ backgroundColor: '#1a1f2e', borderRadius: '12px', padding: '25px', opacity: 0.6 }}>
               <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+                <div style={{ width: '48px', height: '48px', minWidth: '48px', flexShrink: 0, borderRadius: '50%', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
                   {review.name[0]}
                 </div>
                 <div>

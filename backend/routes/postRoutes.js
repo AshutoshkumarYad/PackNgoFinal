@@ -14,6 +14,8 @@ router.route('/')
 router.route('/me')
   .get(protect, getMyPosts);
 
+router.get('/user/:userId', require('../controllers/postController').getUserPosts);
+
 router.route('/saved')
   .get(protect, getSavedPosts);
 

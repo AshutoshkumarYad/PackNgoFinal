@@ -26,8 +26,15 @@ const profileSchema = new mongoose.Schema({
     lng: { type: Number },
     timestamp: { type: Date }
   },
+  lastKnownLocation: {
+    lat: { type: Number },
+    lng: { type: Number },
+    timestamp: { type: Date }
+  },
   safetyPin: { type: String, default: '1234' },
-  openToBuddy: { type: Boolean, default: false }
+  openToBuddy: { type: Boolean, default: false },
+  interests: [{ type: String }],
+  isPrivate: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Profile', profileSchema);

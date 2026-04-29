@@ -4,7 +4,9 @@ const messageSchema = new mongoose.Schema({
   sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   group: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' },
-  text: { type: String, required: true },
+  text: { type: String },
+  mediaUrl: { type: String },
+  mediaType: { type: String, enum: ['image', 'video'] }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Message', messageSchema);

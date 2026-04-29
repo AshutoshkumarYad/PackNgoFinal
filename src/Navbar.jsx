@@ -6,13 +6,20 @@ import './Navbar.css';
 export default function Navbar({ activePage }) {
   const navigate = useNavigate();
   const [avatar, setAvatar] = useState("https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=2662&auto=format&fit=crop");
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [deferredPrompt, setDeferredPrompt] = useState(window.deferredInstallPrompt || null);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      window.deferredInstallPrompt = e;
     };
+    
+    // Catch if already triggered before mount
+    if (window.deferredInstallPrompt) {
+      setDeferredPrompt(window.deferredInstallPrompt);
+    }
+    
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     return () => {
@@ -105,7 +112,7 @@ export default function Navbar({ activePage }) {
       </nav>
 
       <div className="pg-nav-icons">
-        {deferredPrompt && (
+        {deferredPrompt && !window.matchMedia('(display-mode: standalone)').matches && !window.navigator.standalone && (
           <button 
             onClick={handleInstallClick}
             style={{ marginRight: '16px', padding: '6px 12px', background: 'var(--primary, #00C6FF)', border: 'none', borderRadius: '20px', color: '#111', fontWeight: 'bold', cursor: 'pointer' }}

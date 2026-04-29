@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import io from "socket.io-client";
 import "./CommunityChat.css";
-
-export default function CommunityChat({ token, currentUserId }) {
+export default function CommunityChat({ token, currentUserId, targetChatUser, sharedPostToChat }) {
   const [users, setUsers] = useState([]); // Both DMs and Groups
   const [selectedItem, setSelectedItem] = useState(null); // Renamed from selectedUser to conceptualize both
   const [messages, setMessages] = useState([]);
@@ -11,7 +10,9 @@ export default function CommunityChat({ token, currentUserId }) {
   const [searchQuery, setSearchQuery] = useState("");
   
   // Group Create States
+  // Group Create States
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const [showGroupMembers, setShowGroupMembers] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState([]);
 
@@ -41,7 +42,8 @@ export default function CommunityChat({ token, currentUserId }) {
     };
 
     // Initialize Socket
-    socketRef.current = io("");
+    const socketUrl = import.meta.env.DEV ? "http://localhost:5000" : "/";
+    socketRef.current = io(socketUrl);
     if (currentUserId) {
       socketRef.current.emit("join_chat", currentUserId);
     }
@@ -75,6 +77,25 @@ export default function CommunityChat({ token, currentUserId }) {
       console.error("Failed to fetch chat history:", err);
     }
   };
+
+  useEffect(() => {
+    if (targetChatUser && token) {
+      // Create a mock user item if it isn't in 'users' list yet
+      const match = users.find(u => u._id === targetChatUser._id);
+      if (!match) {
+        setUsers(prev => [targetChatUser, ...prev]);
+      }
+      handleSelectUser(targetChatUser);
+    }
+  }, [targetChatUser]);
+
+  // Pre-fill input when a post is shared
+  useEffect(() => {
+    if (sharedPostToChat) {
+      const title = sharedPostToChat.title || sharedPostToChat.description?.substring(0, 30) || 'a post';
+      setInputText(`Check out this post: ${title} - ${window.location.origin}/Community`);
+    }
+  }, [sharedPostToChat]);
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim() || selectedMembers.length === 0) return;
@@ -112,6 +133,74 @@ export default function CommunityChat({ token, currentUserId }) {
 
     socketRef.current.emit("send_message", messageData);
     setInputText("");
+  };
+
+  const handleMediaUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedItem) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append("media", file);
+      
+      const { data } = await axios.post("/api/chat/upload", formData, {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" }
+      });
+      
+      const messageData = {
+        sender: currentUserId,
+        mediaUrl: data.mediaUrl,
+        mediaType: data.mediaType
+      };
+      
+      if (selectedItem.isGroup) {
+         messageData.group = selectedItem._id;
+      } else {
+         messageData.receiver = selectedItem._id;
+      }
+
+      socketRef.current.emit("send_message", messageData);
+    } catch(err) {
+      console.error("Failed to upload media:", err);
+    }
+  };
+
+  const handleDeleteChat = async () => {
+    const isGroup = selectedItem.isGroup;
+    const isGroupAdmin = isGroup && selectedItem.admin && selectedItem.admin.toString() === currentUserId;
+    
+    // Custom prompt logic based on role
+    let promptMsg = "Are you sure you want to permanently delete this entire chat history?";
+    if (isGroup && !isGroupAdmin) promptMsg = "Are you sure you want to leave this group?";
+    if (isGroup && isGroupAdmin) promptMsg = "Are you sure you want to format and DELETE this entire group platform?";
+
+    if (!window.confirm(promptMsg)) return;
+
+    try {
+      const endpoint = isGroup ? `group/${selectedItem._id}` : `${selectedItem._id}`;
+      await axios.delete(`/api/chat/${endpoint}`, { headers: { Authorization: `Bearer ${token}` } });
+      
+      setMessages([]);
+      if (isGroup) {
+         setUsers(users.filter(u => u._id !== selectedItem._id)); // Drop group from list
+      }
+      setSelectedItem(null);
+    } catch(err) { console.error(err); }
+  };
+
+  const handleRemoveMember = async (memberId) => {
+    if (!window.confirm("Remove this member from the group?")) return;
+    try {
+      await axios.delete(`/api/chat/group/${selectedItem._id}/members/${memberId}`, { headers: { Authorization: `Bearer ${token}` } });
+      
+      // Update local member list
+      const updatedSelectedItem = {
+        ...selectedItem,
+        members: selectedItem.members.filter(m => m._id !== memberId)
+      };
+      setSelectedItem(updatedSelectedItem);
+      setUsers(users.map(u => u._id === selectedItem._id ? updatedSelectedItem : u));
+    } catch(err) { console.error(err); }
   };
 
   // Scroll to bottom on new message
@@ -163,9 +252,45 @@ export default function CommunityChat({ token, currentUserId }) {
               )}
               {selectedItem.name || "User"}
             </div>
-            <div style={{ width: '40px' }}></div> {/* Spacer for centering */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {selectedItem.isGroup && (
+                <button 
+                  onClick={() => setShowGroupMembers(!showGroupMembers)}
+                  style={{ background: 'transparent', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '13px' }}
+                >
+                  👥 Members
+                </button>
+              )}
+              <button 
+                onClick={handleDeleteChat} 
+                style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '16px' }}
+                title={selectedItem.isGroup && selectedItem.admin !== currentUserId ? "Leave Group" : "Delete Chat"}
+              >
+                🗑️
+              </button>
+            </div>
           </div>
           
+          {selectedItem.isGroup && showGroupMembers && (
+             <div style={{ background: 'rgba(0,0,0,0.4)', padding: '10px', fontSize: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+               <h4 style={{ margin: '0 0 10px 0', color: '#fff' }}>Group Members</h4>
+               {selectedItem.members && selectedItem.members.map(m => (
+                 <div key={m._id || m} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                   <span style={{ color: '#cbd5e1' }}>{m.name || "Unknown"} {(selectedItem.admin === m._id) && "👑"}</span>
+                   {selectedItem.admin === currentUserId && m._id !== currentUserId && (
+                      <button 
+                         onClick={() => handleRemoveMember(m._id)}
+                         style={{ background: '#f87171', color: '#fff', border: 'none', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', cursor: 'pointer' }}
+                      >
+                        Remove
+                      </button>
+                   )}
+                 </div>
+               ))}
+               {!selectedItem.members && <span style={{color: '#888'}}>Refresh to load roster</span>}
+             </div>
+          )}
+
           <div className="cc-messages">
             {currentChatMessages.map((msg, idx) => {
               const isSent = msg.sender && (msg.sender === currentUserId || msg.sender._id === currentUserId);
@@ -177,7 +302,16 @@ export default function CommunityChat({ token, currentUserId }) {
                      </div>
                   )}
                   <div className="cc-message-bubble">
-                    {msg.text}
+                    {msg.mediaUrl && (
+                      <div style={{ marginBottom: msg.text ? '8px' : '0' }}>
+                        {msg.mediaType === 'video' ? (
+                          <video src={msg.mediaUrl} controls style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }} />
+                        ) : (
+                          <img src={msg.mediaUrl} alt="attachment" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', objectFit: 'contain' }} />
+                        )}
+                      </div>
+                    )}
+                    {msg.text && <div>{msg.text}</div>}
                   </div>
                 </div>
               );
@@ -186,6 +320,10 @@ export default function CommunityChat({ token, currentUserId }) {
           </div>
 
           <form className="cc-input-area" onSubmit={handleSendMessage}>
+            <label style={{ cursor: 'pointer', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}>
+              📎
+              <input type="file" style={{ display: 'none' }} accept="image/*,video/*" onChange={handleMediaUpload} />
+            </label>
             <input 
               type="text" 
               className="cc-input" 

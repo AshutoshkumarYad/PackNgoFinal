@@ -39,9 +39,6 @@ exports.getMyProfile = async (req, res) => {
       
       if (isActiveTrip) {
         activeTripsCount++;
-        if (t.destination) {
-          uniqueDestinations.add(t.destination.split(',').pop().trim());
-        }
       }
 
       // Travelers
@@ -60,47 +57,49 @@ exports.getMyProfile = async (req, res) => {
     });
 
     let autoBadges = [];
-    if (soloCount >= 10) autoBadges.push("Nomad Elite 🥇");
-    else if (soloCount >= 5) autoBadges.push("Solo Explorer 🥈");
-    else if (soloCount >= 1) autoBadges.push("Lone Wolf 🥉");
+    if (soloCount >= 30) autoBadges.push("Nomad Elite 🥇");
+    else if (soloCount >= 15) autoBadges.push("Solo Explorer 🥈");
+    else if (soloCount >= 5) autoBadges.push("Lone Wolf 🥉");
 
-    if (coupleCount >= 10) autoBadges.push("Globetrotting Partners 🥇");
-    else if (coupleCount >= 5) autoBadges.push("Romantic Wanderers 🥈");
-    else if (coupleCount >= 1) autoBadges.push("Dynamic Duo 🥉");
+    if (coupleCount >= 30) autoBadges.push("Globetrotting Partners 🥇");
+    else if (coupleCount >= 15) autoBadges.push("Romantic Wanderers 🥈");
+    else if (coupleCount >= 5) autoBadges.push("Dynamic Duo 🥉");
 
-    if (groupCount >= 10) autoBadges.push("Party Plane 🥇");
-    else if (groupCount >= 5) autoBadges.push("Squad Goals 🥈");
-    else if (groupCount >= 1) autoBadges.push("Pack Leader 🥉");
+    if (groupCount >= 30) autoBadges.push("Party Plane 🥇");
+    else if (groupCount >= 15) autoBadges.push("Squad Goals 🥈");
+    else if (groupCount >= 5) autoBadges.push("Pack Leader 🥉");
 
     // Travel Style Badges
-    if (cultureCount >= 5) autoBadges.push("Cultural Connoisseur 🏺");
-    else if (cultureCount >= 1) autoBadges.push("History Buff 🏛️");
+    if (cultureCount >= 15) autoBadges.push("Cultural Connoisseur 🏺");
+    else if (cultureCount >= 5) autoBadges.push("History Buff 🏛️");
     
-    if (natureCount >= 5) autoBadges.push("Mountain Explorer ⛰️");
-    else if (natureCount >= 1) autoBadges.push("Nature Lover 🌲");
+    if (natureCount >= 15) autoBadges.push("Mountain Explorer ⛰️");
+    else if (natureCount >= 5) autoBadges.push("Nature Lover 🌲");
     
-    if (beachCount >= 5) autoBadges.push("Island Hopper 🏝️");
-    else if (beachCount >= 1) autoBadges.push("Beach Bum 🏖️");
+    if (beachCount >= 15) autoBadges.push("Island Hopper 🏝️");
+    else if (beachCount >= 5) autoBadges.push("Beach Bum 🏖️");
     
-    if (foodCount >= 5) autoBadges.push("Culinary Master 👨‍🍳");
-    else if (foodCount >= 1) autoBadges.push("Foodie Explorer 🌮");
+    if (foodCount >= 15) autoBadges.push("Culinary Master 👨‍🍳");
+    else if (foodCount >= 5) autoBadges.push("Foodie Explorer 🌮");
     
-    if (partyCount >= 5) autoBadges.push("Party Animal 🥳");
-    else if (partyCount >= 1) autoBadges.push("Night Owl 🦉");
+    if (partyCount >= 15) autoBadges.push("Party Animal 🥳");
+    else if (partyCount >= 5) autoBadges.push("Night Owl 🦉");
 
     // Activity Badges
-    if (totalExpenses >= 5) autoBadges.push("Budget Planner 💰");
-    if (generatedItineraries >= 2) autoBadges.push("Master Organizer 📅");
-    if (posts.length >= 3) autoBadges.push("Community Voice 🗣️");
+    if (totalExpenses >= 25) autoBadges.push("Budget Planner 💰");
+    if (generatedItineraries >= 10) autoBadges.push("Master Organizer 📅");
+    if (posts.length >= 15) autoBadges.push("Community Voice 🗣️");
 
-    // Countries computed from engaged trips only
+    // Get posts count and add Geotagged countries to uniqueDestinations
+    posts.forEach(p => {
+       if (p.location && p.location.country) {
+          uniqueDestinations.add(p.location.country.trim().toLowerCase());
+       }
+    });
+
     profile.countriesVisited = uniqueDestinations.size;
-    
-    // kmTraveled calculated via dynamic usage formula
-    profile.kmTraveled = (activeTripsCount * 1500) + (totalExpenses * 100) + (posts.length * 50);
-
-    if (profile.kmTraveled > 10000) autoBadges.push("Elite Traveler 🌍");
-    if (profile.countriesVisited > 3) autoBadges.push("Global Citizen 🛫");
+    profile.soloScore = Math.min(10, soloCount);
+    // kmTraveled is no longer overridden by random formula. It accumulates independently via pingLocation.
 
     // Persist calculated badges and stats
     profile.badges = autoBadges.length > 0 ? autoBadges : ["New Traveler"];
@@ -118,7 +117,7 @@ exports.getMyProfile = async (req, res) => {
 // @desc    Update profile & avatar
 exports.updateProfile = async (req, res) => {
   try {
-    const { handle, bio, location, safetyPin, emergencyContacts, openToBuddy } = req.body;
+    const { handle, bio, location, safetyPin, emergencyContacts, openToBuddy, interests, isPrivate } = req.body;
     
     // Build profile object
     const profileFields = {};
@@ -127,6 +126,14 @@ exports.updateProfile = async (req, res) => {
     if (location !== undefined) profileFields.location = location;
     if (safetyPin !== undefined) profileFields.safetyPin = safetyPin;
     if (openToBuddy !== undefined) profileFields.openToBuddy = openToBuddy === 'true' || openToBuddy === true;
+    if (isPrivate !== undefined) profileFields.isPrivate = isPrivate === 'true' || isPrivate === true;
+    if (interests !== undefined) {
+      try {
+        profileFields.interests = typeof interests === 'string' ? JSON.parse(interests) : interests;
+      } catch(e) {
+        profileFields.interests = interests.split(',').map(i => i.trim()).filter(i => i);
+      }
+    }
     if (emergencyContacts !== undefined) {
       try {
         profileFields.emergencyContacts = typeof emergencyContacts === 'string' ? JSON.parse(emergencyContacts) : emergencyContacts;
@@ -189,16 +196,44 @@ exports.triggerSOS = async (req, res) => {
     };
     await profile.save();
 
-    const trackingLink = `http://localhost:5173/track/${profile.user._id}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const trackingLink = `${frontendUrl}/track/${profile.user._id}`;
     
-    console.log(`\n\n🚨🚨 [MOCK SMS DISPATCHED] 🚨🚨`);
+    console.log(`\n\n🚨🚨 [SOS ALERT DISPATCHED] 🚨🚨`);
+
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+    
+    let client;
+    if (accountSid && authToken) {
+      client = require('twilio')(accountSid, authToken);
+    }
+
     if (profile.emergencyContacts && profile.emergencyContacts.length > 0) {
-      profile.emergencyContacts.forEach((contact, idx) => {
+      for (let idx = 0; idx < profile.emergencyContacts.length; idx++) {
+        const contact = profile.emergencyContacts[idx];
+        const messageBody = `EMERGENCY! ${profile.user.name} has triggered a "Watch My Back" SOS alert (${reason}). LIVE TRACKING: ${trackingLink}`;
+        
         console.log(`--- CONTACT ${idx+1} ---`);
         console.log(`TO: ${contact.name} (${contact.phone})`);
-        console.log(`MESSAGE: EMERGENCY! ${profile.user.name} has triggered a "Watch My Back" SOS alert (${reason}).`);
-        console.log(`LIVE TRACKING: ${trackingLink}`);
-      });
+        console.log(`MESSAGE: ${messageBody}`);
+
+        if (client && twilioPhoneNumber) {
+          try {
+            await client.messages.create({
+              body: messageBody,
+              from: twilioPhoneNumber,
+              to: contact.phone
+            });
+            console.log(`✅ SMS successfully sent to ${contact.phone}`);
+          } catch (smsError) {
+            console.error(`❌ Failed to send SMS to ${contact.phone}:`, smsError.message);
+          }
+        } else {
+          console.log(`⚠️ Twilio credentials missing in .env. Mock SMS only.`);
+        }
+      }
     } else {
       console.log(`WARNING: No emergency contacts configured!`);
       console.log(`LIVE TRACKING AVAILABLE AT: ${trackingLink}`);
@@ -261,13 +296,21 @@ exports.getTopUsers = async (req, res) => {
   try {
     const currentProfile = await Profile.findOne({ user: req.user.id });
     
+    // Exclude self and already followed users
+    let excludeUsers = [req.user.id];
+    if (currentProfile && currentProfile.following) {
+      excludeUsers = [...excludeUsers, ...currentProfile.following];
+    }
+
+    let query = { user: { $nin: excludeUsers } };
+    if (currentProfile && currentProfile.interests && currentProfile.interests.length > 0) {
+       query.interests = { $in: currentProfile.interests };
+    }
+
     // Find users by location matching if the user has a location set
     let topProfiles = [];
     if (currentProfile && currentProfile.location) {
-      topProfiles = await Profile.find({
-        user: { $ne: req.user.id },
-        location: currentProfile.location
-      })
+      topProfiles = await Profile.find({ ...query, location: currentProfile.location })
       .populate('user', ['name'])
       .limit(6);
     }
@@ -275,7 +318,8 @@ exports.getTopUsers = async (req, res) => {
     // Fallback: pad with top users by followers count if not enough exact matches
     if (topProfiles.length < 6) {
       const moreProfiles = await Profile.find({
-        user: { $ne: req.user.id, $nin: topProfiles.map(p => p.user._id) }
+        ...query,
+        user: { $nin: [...excludeUsers, ...topProfiles.map(p => p.user._id)] }
       })
       .sort({ countriesVisited: -1, followers: -1 })
       .populate('user', ['name'])
@@ -326,8 +370,17 @@ exports.getRecommendations = async (req, res) => {
     const currentProfile = await Profile.findOne({ user: req.user.id });
     if (!currentProfile) return res.status(404).json({ msg: "Profile not found" });
 
-    // Fetch all other profiles
-    const otherProfiles = await Profile.find({ user: { $ne: req.user.id } }).populate('user', ['name']);
+    // Exclude self and already followed users
+    let excludeUsers = [req.user.id];
+    if (currentProfile && currentProfile.following) {
+      excludeUsers = [...excludeUsers, ...currentProfile.following];
+    }
+    
+    let query = { user: { $nin: excludeUsers } };
+    if (currentProfile && currentProfile.interests && currentProfile.interests.length > 0) {
+        query.interests = { $in: currentProfile.interests };
+    }
+    const otherProfiles = await Profile.find(query).populate('user', ['name']);
     
     // Collaborative filtering scoring
     const scoredProfiles = otherProfiles.map(p => {
@@ -348,6 +401,13 @@ exports.getRecommendations = async (req, res) => {
       // Feature 3: Country experience similarity
       const visitedDiff = Math.abs((currentProfile.countriesVisited || 0) - (p.countriesVisited || 0));
       if (visitedDiff <= 2) score += 2; // Similar experience levels
+      
+      // Feature 4: Interest overlap scoring
+      if (currentProfile.interests && p.interests) {
+         currentProfile.interests.forEach(interest => {
+           if (p.interests.some(pi => pi.toLowerCase() === interest.toLowerCase())) score += 10;
+         });
+      }
       
       return { profile: p, score };
     });
@@ -413,6 +473,106 @@ exports.getTrackingLocation = async (req, res) => {
     });
   } catch (err) {
     console.error("Get Tracking Error:", err);
+    res.status(500).send('Server Error');
+  }
+};
+
+// @route   POST /api/profile/location-ping
+// @desc    Calculate and add precise GPS distance
+exports.pingLocation = async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
+    if (!lat || !lng) return res.status(400).json({msg: "Lat/Lng required"});
+    let profile = await Profile.findOne({ user: req.user.id });
+    if (!profile) return res.status(404).json({ msg: "Profile not found" });
+
+    let distanceTraveled = 0;
+    if (profile.lastKnownLocation && profile.lastKnownLocation.lat && profile.lastKnownLocation.lng) {
+      // Haversine formula
+      const R = 6371; // Earth's radius in kilometers
+      const dLat = (lat - profile.lastKnownLocation.lat) * Math.PI / 180;
+      const dLng = (lng - profile.lastKnownLocation.lng) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(profile.lastKnownLocation.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * 
+        Math.sin(dLng/2) * Math.sin(dLng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      distanceTraveled = R * c;
+      
+      // Prevent massive jumps (e.g. ignore > 15000km in one ping) and ignore tiny GPS jitter (< 0.1km)
+      if (distanceTraveled > 0.1 && distanceTraveled < 15000) {
+         profile.kmTraveled = Math.round((profile.kmTraveled || 0) + distanceTraveled);
+      }
+    }
+
+    profile.lastKnownLocation = {
+      lat,
+      lng,
+      timestamp: new Date()
+    };
+    
+    await profile.save();
+    res.json({ msg: "Location tracked", kmAdded: distanceTraveled, total: profile.kmTraveled });
+  } catch (err) {
+    console.error("Ping Location Error:", err);
+    res.status(500).send('Server Error');
+  }
+};
+
+// @route   GET /api/profile/user/:id
+// @desc    Get user profile by user ID with privacy logic
+exports.getProfileById = async (req, res) => {
+  try {
+    // Attempt to find by profile user ID
+    const profile = await Profile.findOne({ user: req.params.id }).populate('user', ['name', 'email']);
+
+    if (!profile) {
+      return res.status(404).json({ msg: 'Profile not found' });
+    }
+
+    // Check optional authentication
+    let currentUserId = null;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_jwt_key');
+        currentUserId = decoded.id;
+      } catch (err) {}
+    }
+
+    // If profile is public or the requester is the owner, return full profile
+    if (!profile.isPrivate || (currentUserId && currentUserId === req.params.id)) {
+      return res.json(profile);
+    }
+
+    // If private, check if requester is a follower
+    const isFollower = currentUserId && profile.followers.some(f => f.toString() === currentUserId);
+    
+    if (isFollower) {
+      return res.json(profile);
+    }
+
+    // Restricted profile
+    const restrictedProfile = {
+      _id: profile._id,
+      user: profile.user,
+      name: profile.user?.name,
+      handle: profile.handle,
+      avatar: profile.avatar,
+      bio: profile.bio,
+      badges: profile.badges?.slice(0, 3) || [],
+      isPrivateRestricted: true,
+      followers: profile.followers,
+      following: profile.following
+    };
+
+    res.json(restrictedProfile);
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind == 'ObjectId') {
+      return res.status(400).json({ msg: 'Profile not found' });
+    }
     res.status(500).send('Server Error');
   }
 };

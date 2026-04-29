@@ -43,6 +43,10 @@ const tripSchema = new mongoose.Schema({
     type: Array,
     default: [],
   },
+  emergencyContacts: {
+    type: Object,
+    default: null,
+  },
   hasGenerated: {
     type: Boolean,
     default: true,
